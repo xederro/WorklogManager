@@ -3,12 +3,7 @@ package jira
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
-
-	"github.com/xederro/WorklogManager/config"
 )
 
 type Worklogs struct {
@@ -33,39 +28,14 @@ type Worklog struct {
 }
 
 func (w *Worklog) AddToIssue(i *Issue) error {
-	client := &http.Client{}
-
 	body, err := json.Marshal(*w)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/worklog?adjustEstimate=auto", *i.Self), bytes.NewReader(body))
+	_, err = Jira{}.Request("POST", fmt.Sprintf("%s/worklog?adjustEstimate=auto", *i.Self), bytes.NewReader(body))
 	if err != nil {
 		return err
-	}
-
-	req.AddCookie(&http.Cookie{
-		Name:  "JSESSIONID",
-		Value: config.SESSIONID,
-	})
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	rBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if resp.Status != "201" {
-		return errors.New(string(rBody))
 	}
 
 	return nil

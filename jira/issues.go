@@ -2,11 +2,7 @@ package jira
 
 import (
 	"encoding/json"
-	"io"
-	"log"
-	"net/http"
-
-	"github.com/xederro/WorklogManager/config"
+	"fmt"
 )
 
 type Issues struct {
@@ -21,31 +17,16 @@ type Issue struct {
 }
 
 func GetIssues() *Issues {
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", config.BASEJIRALINK+"search?jql=assignee%20in(currentUser())AND%20sprint%20in%20openSprints()", nil)
+	body, err := Jira{}.Request("GET", fmt.Sprintf("%s/search?jql=assignee in(currentUser())AND sprint in openSprints()", UrlBase), nil)
 	if err != nil {
-		log.Fatalln(err, 0)
-	}
-
-	req.AddCookie(&http.Cookie{
-		Name:  "JSESSIONID",
-		Value: config.SESSIONID,
-	})
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatalln(err, 1)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err, 2)
+		return nil
 	}
 
 	i := &Issues{}
-	json.Unmarshal(body, i)
+	err = json.Unmarshal(body, i)
+	if err != nil {
+		return nil
+	}
 
 	return i
 }
