@@ -16,7 +16,7 @@ var (
 
 type Jira struct{}
 
-func (j Jira) SetBasicAuth(username, password string) bool {
+func (j Jira) SetBasicAuth(username, password string) error {
 	jiraAuth = &basicAuth{
 		Pass:  password,
 		Login: username,
@@ -25,22 +25,21 @@ func (j Jira) SetBasicAuth(username, password string) bool {
 	r, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
 	fmt.Println(string(r))
 	if err != nil {
-		return false
+		return err
 	}
-	return true
+	return nil
 }
 
-func (j Jira) SetTokenAuth(token string) bool {
+func (j Jira) SetTokenAuth(token string) error {
 	jiraAuth = &tokenAuth{
 		Token: token,
 	}
-
-	r, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
-	fmt.Println(string(r))
+	fmt.Println(1)
+	_, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
 	if err != nil {
-		return false
+		return err
 	}
-	return true
+	return nil
 }
 
 func (j Jira) Request(method, url string, body io.Reader) ([]byte, error) {

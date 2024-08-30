@@ -1,37 +1,31 @@
 package state
 
 const (
-	CHOOSING_TICKET = iota
-	MEASURING_TIME
-	WRITING_WORKLOG
+	LOGIN = iota
+	TICKETS
+	WORKLOG
 	SENDING
 )
 
 type State struct {
-	State uint8
+	state int
 	new   bool
 }
 
 func NewState() *State {
 	return &State{
+		state: LOGIN,
 		new:   true,
-		State: CHOOSING_TICKET,
 	}
 }
 
-func (s *State) Choose() {
-	s.State = MEASURING_TIME
+func (s *State) Login() {
 	s.new = true
+	s.state = TICKETS
 }
 
-func (s *State) Log() {
-	s.State = WRITING_WORKLOG
-	s.new = true
-}
-
-func (s *State) Send() {
-	s.State = SENDING
-	s.new = true
+func (s *State) GetState() int {
+	return s.state
 }
 
 func (s *State) IsNew() bool {
