@@ -162,7 +162,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				break
 			case key.Matches(msg, m.delegateKeys.log):
-				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Stop()) //TODO: stops everything
+				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Stop())
 				m.log = huh.NewForm(
 					huh.NewGroup(
 						huh.NewText().
@@ -179,14 +179,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 		}
-
-		// This will also call our delegate's update function.
-		for _, item := range m.list.Items() {
-			cmds = append(cmds, item.(*customItem).UpdateStopwatch(msg))
-		}
-		newListModel, cmd := m.list.Update(msg)
-		m.list = newListModel
-		cmds = append(cmds, cmd)
 		break
 	case state.WORKLOG:
 		form, cmd := m.log.Update(msg)
@@ -202,6 +194,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		break
 	}
 
+	// This will also call our delegate's update function.
+	for _, item := range m.list.Items() {
+		cmds = append(cmds, item.(*customItem).UpdateStopwatch(msg))
+	}
+	newListModel, cmd := m.list.Update(msg)
+	m.list = newListModel
+	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
