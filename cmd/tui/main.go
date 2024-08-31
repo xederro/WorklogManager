@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	appStyle = lipgloss.NewStyle().Padding(1, 2)
+	jiraClient = jira.Jira{}
+	appStyle   = lipgloss.NewStyle().Padding(1, 2)
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
@@ -31,13 +32,13 @@ var (
 type customItem struct {
 	issue     *jira.Issue
 	stopwatch *stopwatch.Model
+	logText   string
 }
 
-func (i *customItem) Title() string {
-	return fmt.Sprintf("%s ~ %s", *i.issue.ID, i.stopwatch.View())
-}
-func (i *customItem) Description() string            { return *i.issue.ID }
+func (i *customItem) Title() string                  { return *i.issue.ID }
+func (i *customItem) Description() string            { return i.stopwatch.View() }
 func (i *customItem) FilterValue() string            { return *i.issue.ID }
+func (i *customItem) GetLogText() *string            { return &i.logText }
 func (i *customItem) GetStopwatch() *stopwatch.Model { return i.stopwatch }
 func (i *customItem) UpdateStopwatch(msg tea.Msg) tea.Cmd {
 	m, cmd := i.stopwatch.Update(msg)
@@ -48,6 +49,7 @@ func (i *customItem) UpdateStopwatch(msg tea.Msg) tea.Cmd {
 type model struct {
 	list         list.Model
 	login        *huh.Form
+	log          *huh.Form
 	delegateKeys *delegateKeyMap
 	state        state.State
 }
@@ -82,7 +84,8 @@ func newModel() model {
 			huh.NewInput().
 				Title("Token").
 				Prompt("> ").
-				Value(&token),
+				Value(&token).
+				Validate(jiraClient.SetTokenAuth),
 		).WithHideFunc(func() bool {
 			return !isToken
 		}),
@@ -119,15 +122,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.login.State == huh.StateCompleted {
 			// Make list of items
 			var items []list.Item
-			issues, err := jira.GetIssues()
+			issues, err := jiraClient.GetIssues()
 			if err != nil {
-
+				panic(err)
 			}
 			for _, issue := range issues.Issues {
 				s := stopwatch.NewWithInterval(time.Second)
 				items = append(items, &customItem{
 					issue:     issue,
 					stopwatch: &s,
+					logText:   "",
 				})
 			}
 			m.list.SetItems(items)
@@ -151,6 +155,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, m.delegateKeys.choose):
 				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Toggle())
+				break
+			case key.Matches(msg, m.delegateKeys.stopAll):
+				for _, item := range m.list.Items() {
+					cmds = append(cmds, item.(*customItem).GetStopwatch().Stop())
+				}
+				break
+			case key.Matches(msg, m.delegateKeys.log):
+				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Stop()) //TODO: stops everything
+				m.log = huh.NewForm(
+					huh.NewGroup(
+						huh.NewText().
+							Title(fmt.Sprintf(
+								"%s @ %s",
+								m.list.SelectedItem().(*customItem).GetStopwatch().View(),
+								m.list.SelectedItem().(*customItem).Title()),
+							).
+							Value(m.list.SelectedItem().(*customItem).GetLogText()),
+					),
+				)
+				cmds = append(cmds, m.log.Init())
+				m.state.LogWork()
+				break
 			}
 		}
 
@@ -161,6 +187,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newListModel, cmd := m.list.Update(msg)
 		m.list = newListModel
 		cmds = append(cmds, cmd)
+		break
+	case state.WORKLOG:
+		form, cmd := m.log.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.log = f
+		}
+		cmds = append(cmds, cmd)
+
+		if m.log.State == huh.StateCompleted {
+			m.state.Logged()
+			m.log = nil
+		}
 		break
 	}
 
@@ -173,11 +211,18 @@ func (m model) View() string {
 		return appStyle.Render(m.login.View())
 	case state.TICKETS:
 		return appStyle.Render(m.list.View())
+	case state.WORKLOG:
+		return appStyle.Render(m.log.View())
 	}
 	panic("unreachable")
 }
 
 func main() {
+	server := os.Getenv("JIRA_URL")
+	if server == "" {
+		panic("JIRA_URL environment variable not set. Example: https://jira.test.server.com/rest/api/2/")
+	}
+	jiraClient.SetUrlBase(server)
 	if _, err := tea.NewProgram(newModel(), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
@@ -186,6 +231,6 @@ func main() {
 
 func validator(login *string) func(string) error {
 	return func(pass string) error {
-		return jira.Jira{}.SetBasicAuth(*login, pass)
+		return jiraClient.SetBasicAuth(*login, pass)
 	}
 }

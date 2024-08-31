@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 )
 
 type Issues struct {
@@ -17,8 +18,31 @@ type Issue struct {
 	Fields *Fields `json:"fields,omitempty"`
 }
 
-func GetIssues() (*Issues, error) {
-	body, err := Jira{}.Request("GET", fmt.Sprintf("%s/search?jql=assignee in(currentUser())AND sprint in openSprints()", UrlBase), nil)
+func (j Jira) GetIssues() (*Issues, error) {
+	if a, ok := j.getAuth().(*tokenAuth); ok && a.Token == "test" {
+		return j.getTestIssues()
+	}
+
+	body, err := j.Request("GET", fmt.Sprintf("%s/search?jql=assignee in(currentUser())AND status!=closed", UrlBase), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	i := &Issues{}
+	err = json.Unmarshal(body, i)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(i.Issues) == 0 {
+		return nil, errors.New("no issues found")
+	}
+
+	return i, nil
+}
+
+func (j Jira) getTestIssues() (*Issues, error) {
+	body, err := os.ReadFile("data\\exampleIssues.txt")
 	if err != nil {
 		return nil, err
 	}

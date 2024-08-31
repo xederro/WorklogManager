@@ -1,6 +1,0 @@
-package config
-
-const (
-	BASEJIRALINK = "https://<jira_server>/rest/api/2/"
-	SESSIONID    = "<jira_token>"
-)

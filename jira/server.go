@@ -3,20 +3,23 @@ package jira
 import (
 	"errors"
 	"fmt"
-	"github.com/xederro/WorklogManager/config"
 	"io"
 	"net/http"
 )
 
 var (
 	client        = &http.Client{}
-	UrlBase       = config.BASEJIRALINK
+	UrlBase       = ""
 	jiraAuth auth = nil
 )
 
 type Jira struct{}
 
-func (j Jira) SetBasicAuth(username, password string) error {
+func (j *Jira) SetUrlBase(urlBase string) {
+	UrlBase = urlBase
+}
+
+func (j *Jira) SetBasicAuth(username, password string) error {
 	jiraAuth = &basicAuth{
 		Pass:  password,
 		Login: username,
@@ -30,11 +33,15 @@ func (j Jira) SetBasicAuth(username, password string) error {
 	return nil
 }
 
-func (j Jira) SetTokenAuth(token string) error {
+func (j *Jira) SetTokenAuth(token string) error {
 	jiraAuth = &tokenAuth{
 		Token: token,
 	}
-	fmt.Println(1)
+
+	if token == "test" {
+		return nil
+	}
+
 	_, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
 	if err != nil {
 		return err
@@ -42,7 +49,7 @@ func (j Jira) SetTokenAuth(token string) error {
 	return nil
 }
 
-func (j Jira) Request(method, url string, body io.Reader) ([]byte, error) {
+func (j *Jira) Request(method, url string, body io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return []byte{}, err
@@ -68,8 +75,12 @@ func (j Jira) Request(method, url string, body io.Reader) ([]byte, error) {
 	return rBody, nil
 }
 
-func (j Jira) addHeaders(req *http.Request) {
+func (j *Jira) addHeaders(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	jiraAuth.addToken(req)
+}
+
+func (j *Jira) getAuth() auth {
+	return jiraAuth
 }

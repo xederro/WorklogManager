@@ -4,7 +4,6 @@ const (
 	LOGIN = iota
 	TICKETS
 	WORKLOG
-	SENDING
 )
 
 type State struct {
@@ -21,6 +20,16 @@ func NewState() *State {
 
 func (s *State) Login() {
 	s.new = true
+	s.state = TICKETS
+}
+
+func (s *State) LogWork() {
+	s.new = true
+	s.state = WORKLOG
+}
+
+func (s *State) Logged() {
+	s.new = false
 	s.state = TICKETS
 }
 

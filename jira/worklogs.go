@@ -27,13 +27,13 @@ type Worklog struct {
 	IssueID          *string `json:"issueId,omitempty"`
 }
 
-func (w *Worklog) AddToIssue(i *Issue) error {
+func (j Jira) AddWorklogToIssue(w *Worklog, i *Issue) error {
 	body, err := json.Marshal(*w)
 	if err != nil {
 		return err
 	}
 
-	_, err = Jira{}.Request("POST", fmt.Sprintf("%s/worklog?adjustEstimate=auto", *i.Self), bytes.NewReader(body))
+	_, err = j.Request("POST", fmt.Sprintf("%s/worklog?adjustEstimate=auto", *i.Self), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
