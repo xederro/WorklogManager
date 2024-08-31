@@ -22,7 +22,7 @@ func newItemDelegate(keys *delegateKeyMap) CustomDelegate {
 		return nil
 	}
 
-	help := []key.Binding{keys.choose, keys.log, keys.stopAll}
+	help := []key.Binding{keys.choose, keys.worklog, keys.stopAll}
 
 	d.ShortHelpFunc = func() []key.Binding {
 		return help
@@ -37,7 +37,7 @@ func newItemDelegate(keys *delegateKeyMap) CustomDelegate {
 
 type delegateKeyMap struct {
 	choose  key.Binding
-	log     key.Binding
+	worklog key.Binding
 	stopAll key.Binding
 }
 
@@ -46,7 +46,7 @@ type delegateKeyMap struct {
 func (d delegateKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
 		d.choose,
-		d.log,
+		d.worklog,
 		d.stopAll,
 	}
 }
@@ -57,7 +57,7 @@ func (d delegateKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
 			d.choose,
-			d.log,
+			d.worklog,
 			d.stopAll,
 		},
 	}
@@ -66,12 +66,12 @@ func (d delegateKeyMap) FullHelp() [][]key.Binding {
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
 		choose: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "choose"),
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "choose"),
 		),
-		log: key.NewBinding(
-			key.WithKeys("l"),
-			key.WithHelp("l", "log"),
+		worklog: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "worklog"),
 		),
 		stopAll: key.NewBinding(
 			key.WithKeys("p"),
@@ -109,7 +109,7 @@ func (d CustomDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		if isFiltered {
 			// Highlight matches
 			unmatched := s.SelectedTitle.Inline(true)
-			matched := unmatched.Copy().Inherit(s.FilterMatch)
+			matched := unmatched.Inherit(s.FilterMatch)
 			title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 		}
 		title = s.SelectedTitle.Render(title)
@@ -118,7 +118,7 @@ func (d CustomDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		if isFiltered {
 			// Highlight matches
 			unmatched := s.NormalTitle.Inline(true)
-			matched := unmatched.Copy().Inherit(s.FilterMatch)
+			matched := unmatched.Inherit(s.FilterMatch)
 			title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 		}
 		title = s.NormalTitle.Render(title)

@@ -27,6 +27,10 @@ var (
 	statusMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 				Render
+
+	formStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
+			Render
 )
 
 type customItem struct {
@@ -148,20 +152,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetSize(msg.Width-h, msg.Height-v)
 
 		case tea.KeyMsg:
-			// Don't match any of the keys below if we're actively filtering.
 			if m.list.FilterState() == list.Filtering {
 				break
 			}
 			switch {
 			case key.Matches(msg, m.delegateKeys.choose):
+				status := ""
+				if m.list.SelectedItem().(*customItem).GetStopwatch().Running() {
+					status = fmt.Sprintf("Stopped %s Stopwatch", *m.list.SelectedItem().(*customItem).issue.Key)
+				} else {
+					status = fmt.Sprintf("Started %s Stopwatch", *m.list.SelectedItem().(*customItem).issue.Key)
+				}
+
+				m.list.NewStatusMessage(statusMessageStyle(status))
 				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Toggle())
 				break
 			case key.Matches(msg, m.delegateKeys.stopAll):
+				m.list.NewStatusMessage(
+					statusMessageStyle("Stopped All Stopwatches"),
+				)
 				for _, item := range m.list.Items() {
 					cmds = append(cmds, item.(*customItem).GetStopwatch().Stop())
 				}
 				break
-			case key.Matches(msg, m.delegateKeys.log):
+			case key.Matches(msg, m.delegateKeys.worklog):
+				m.list.NewStatusMessage(
+					statusMessageStyle(
+						fmt.Sprintf("Sending %s Worklog", *m.list.SelectedItem().(*customItem).issue.Key),
+					),
+				)
 				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Stop())
 				m.log = huh.NewForm(
 					huh.NewGroup(
@@ -179,6 +198,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 		}
+		newListModel, cmd := m.list.Update(msg)
+		m.list = newListModel
+		cmds = append(cmds, cmd)
 		break
 	case state.WORKLOG:
 		form, cmd := m.log.Update(msg)
@@ -189,29 +211,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.log.State == huh.StateCompleted {
 			m.state.Logged()
+			cmds = append(cmds, m.list.StartSpinner())
 			m.log = nil
+		}
+
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, key.NewBinding(
+				key.WithKeys("esc"), //TODO: move to separate object for better visibility
+			)):
+				m.state.Logged()
+				m.log = nil
+				break
+			}
 		}
 		break
 	}
 
-	// This will also call our delegate's update function.
 	for _, item := range m.list.Items() {
 		cmds = append(cmds, item.(*customItem).UpdateStopwatch(msg))
 	}
-	newListModel, cmd := m.list.Update(msg)
-	m.list = newListModel
-	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
 	switch m.state.GetState() {
 	case state.LOGIN:
-		return appStyle.Render(m.login.View())
+		return formStyle(m.login.View())
 	case state.TICKETS:
-		return appStyle.Render(m.list.View())
+		return formStyle(m.list.View())
 	case state.WORKLOG:
-		return appStyle.Render(m.log.View())
+		return formStyle(m.log.View())
 	}
 	panic("unreachable")
 }
