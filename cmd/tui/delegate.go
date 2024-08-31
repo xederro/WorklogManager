@@ -41,8 +41,6 @@ type delegateKeyMap struct {
 	stopAll key.Binding
 }
 
-// Additional short help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
 func (d delegateKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
 		d.choose,
@@ -51,8 +49,6 @@ func (d delegateKeyMap) ShortHelp() []key.Binding {
 	}
 }
 
-// Additional full help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
 func (d delegateKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
@@ -66,8 +62,8 @@ func (d delegateKeyMap) FullHelp() [][]key.Binding {
 func newDelegateKeyMap() *delegateKeyMap {
 	return &delegateKeyMap{
 		choose: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "choose"),
+			key.WithKeys(" "),
+			key.WithHelp("space", "choose"),
 		),
 		worklog: key.NewBinding(
 			key.WithKeys("enter"),

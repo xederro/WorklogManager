@@ -5,7 +5,7 @@ import (
 )
 
 type auth interface {
-	addToken(req *http.Request)
+	addAuth(req *http.Request)
 }
 
 type basicAuth struct {
@@ -13,7 +13,7 @@ type basicAuth struct {
 	Login string
 }
 
-func (b *basicAuth) addToken(req *http.Request) {
+func (b *basicAuth) addAuth(req *http.Request) {
 	req.SetBasicAuth(b.Login, b.Pass)
 }
 
@@ -21,7 +21,7 @@ type tokenAuth struct {
 	Token string
 }
 
-func (t *tokenAuth) addToken(req *http.Request) {
+func (t *tokenAuth) addAuth(req *http.Request) {
 	req.AddCookie(&http.Cookie{
 		Name:  "JSESSIONID",
 		Value: t.Token,

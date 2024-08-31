@@ -25,8 +25,7 @@ func (j *Jira) SetBasicAuth(username, password string) error {
 		Login: username,
 	}
 
-	r, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
-	fmt.Println(string(r))
+	_, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
 	if err != nil {
 		return err
 	}
@@ -78,7 +77,7 @@ func (j *Jira) Request(method, url string, body io.Reader) ([]byte, error) {
 func (j *Jira) addHeaders(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	jiraAuth.addToken(req)
+	jiraAuth.addAuth(req)
 }
 
 func (j *Jira) getAuth() auth {

@@ -16,6 +16,10 @@ import (
 )
 
 var (
+	startTime   = time.Now().Format("2006-01-02T15:04:05.000-0700")
+	ch          = make(chan tea.Msg, 2)
+	currSending = 0
+
 	jiraClient = jira.Jira{}
 	appStyle   = lipgloss.NewStyle().Padding(1, 2)
 
@@ -33,6 +37,11 @@ var (
 			Render
 )
 
+type worklogResponse struct {
+	err      error
+	affected *customItem
+}
+
 type customItem struct {
 	issue     *jira.Issue
 	stopwatch *stopwatch.Model
@@ -48,6 +57,9 @@ func (i *customItem) UpdateStopwatch(msg tea.Msg) tea.Cmd {
 	m, cmd := i.stopwatch.Update(msg)
 	i.stopwatch = &m
 	return cmd
+}
+func (i *customItem) GetIssue() *jira.Issue {
+	return i.issue
 }
 
 type model struct {
@@ -164,23 +176,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					status = fmt.Sprintf("Started %s Stopwatch", *m.list.SelectedItem().(*customItem).issue.Key)
 				}
 
-				m.list.NewStatusMessage(statusMessageStyle(status))
+				cmds = append(cmds, m.list.NewStatusMessage(statusMessageStyle(status)))
 				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Toggle())
 				break
 			case key.Matches(msg, m.delegateKeys.stopAll):
-				m.list.NewStatusMessage(
+				cmds = append(cmds, m.list.NewStatusMessage(
 					statusMessageStyle("Stopped All Stopwatches"),
-				)
+				))
 				for _, item := range m.list.Items() {
 					cmds = append(cmds, item.(*customItem).GetStopwatch().Stop())
 				}
 				break
 			case key.Matches(msg, m.delegateKeys.worklog):
-				m.list.NewStatusMessage(
+				cmds = append(cmds, m.list.NewStatusMessage(
 					statusMessageStyle(
 						fmt.Sprintf("Sending %s Worklog", *m.list.SelectedItem().(*customItem).issue.Key),
 					),
-				)
+				))
+
 				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Stop())
 				m.log = huh.NewForm(
 					huh.NewGroup(
@@ -212,6 +225,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.log.State == huh.StateCompleted {
 			m.state.Logged()
 			cmds = append(cmds, m.list.StartSpinner())
+			currSending++
+			go func(ch chan tea.Msg) {
+				t := int(m.list.SelectedItem().(*customItem).GetStopwatch().Elapsed().Seconds())
+				w := jira.Worklog{
+					Comment:          m.list.SelectedItem().(*customItem).GetLogText(),
+					TimeSpentSeconds: &t,
+					Started:          &startTime,
+				}
+
+				i := m.list.SelectedItem().(*customItem)
+				err := jiraClient.AddWorklogToIssue(&w, i.GetIssue())
+				ch <- worklogResponse{
+					err:      err,
+					affected: i,
+				}
+			}(ch)
 			m.log = nil
 		}
 
@@ -226,6 +255,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 		}
+		break
+	}
+
+	select {
+	case worklogResp := <-ch:
+		if worklogResp, ok := worklogResp.(worklogResponse); ok {
+			currSending--
+			if worklogResp.err != nil {
+				cmds = append(cmds, m.list.NewStatusMessage(
+					statusMessageStyle(
+						worklogResp.err.Error(),
+					),
+				))
+			} else {
+				cmds = append(
+					cmds,
+					m.list.NewStatusMessage(
+						statusMessageStyle(
+							fmt.Sprintf("Worklog sent to %s", *worklogResp.affected.GetIssue().Key),
+						),
+					),
+					worklogResp.affected.GetStopwatch().Reset(),
+				)
+			}
+			if currSending == 0 {
+				m.list.StopSpinner()
+			}
+		}
+	default:
 		break
 	}
 
