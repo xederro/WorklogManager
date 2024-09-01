@@ -42,7 +42,7 @@ func (j Jira) GetIssues() (*Issues, error) {
 }
 
 func (j Jira) getTestIssues() (*Issues, error) {
-	body, err := os.ReadFile("data\\exampleIssues.txt")
+	body, err := os.ReadFile("data/exampleIssues.json")
 	if err != nil {
 		return nil, err
 	}

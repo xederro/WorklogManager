@@ -21,7 +21,7 @@ As a developer who struggled with accurately logging the time spent on various t
 
 ## Installation
 
-To install WorklogManager, you need to have Go installed on your machine. You can then clone the repository and build the application:
+To install WorklogManager, you need to have Go >= 1.23 installed on your machine. You can then clone the repository and build the application:
 
 ```bash
 git clone https://github.com/xederro/WorklogManager.git
@@ -33,8 +33,14 @@ go build
 
 Run the built executable from the terminal:
 
+### Linux
 ```bash
-JIRA_URL="https://<jira_server>/rest/api/2/" && ./WorklogManager
+export JIRA_URL="https://<jira_server>/rest/api/2/" && ./WorklogManager
+```
+
+### Windows
+```bash
+$env:JIRA_URL="https://<jira_server>/rest/api/2/"; ./WorklogManager.exe
 ```
 
 ## Demo
