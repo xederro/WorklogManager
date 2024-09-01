@@ -1,4 +1,4 @@
-package main
+package issueList
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ type CustomDelegate struct {
 	list.DefaultDelegate
 }
 
-func newItemDelegate(keys *delegateKeyMap) CustomDelegate {
+func NewItemDelegate(keys *DelegateKeyMap) CustomDelegate {
 	d := CustomDelegate{
 		list.NewDefaultDelegate(),
 	}
@@ -22,7 +22,7 @@ func newItemDelegate(keys *delegateKeyMap) CustomDelegate {
 		return nil
 	}
 
-	help := []key.Binding{keys.choose, keys.worklog, keys.stopAll}
+	help := []key.Binding{keys.Choose, keys.Worklog, keys.StopAll}
 
 	d.ShortHelpFunc = func() []key.Binding {
 		return help
@@ -35,48 +35,48 @@ func newItemDelegate(keys *delegateKeyMap) CustomDelegate {
 	return d
 }
 
-type delegateKeyMap struct {
-	choose  key.Binding
-	worklog key.Binding
-	stopAll key.Binding
+type DelegateKeyMap struct {
+	Choose  key.Binding
+	Worklog key.Binding
+	StopAll key.Binding
 }
 
-func (d delegateKeyMap) ShortHelp() []key.Binding {
+func (d DelegateKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		d.choose,
-		d.worklog,
-		d.stopAll,
+		d.Choose,
+		d.Worklog,
+		d.StopAll,
 	}
 }
 
-func (d delegateKeyMap) FullHelp() [][]key.Binding {
+func (d DelegateKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			d.choose,
-			d.worklog,
-			d.stopAll,
+			d.Choose,
+			d.Worklog,
+			d.StopAll,
 		},
 	}
 }
 
-func newDelegateKeyMap() *delegateKeyMap {
-	return &delegateKeyMap{
-		choose: key.NewBinding(
+func NewDelegateKeyMap() *DelegateKeyMap {
+	return &DelegateKeyMap{
+		Choose: key.NewBinding(
 			key.WithKeys(" "),
 			key.WithHelp("space", "choose"),
 		),
-		worklog: key.NewBinding(
+		Worklog: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "worklog"),
 		),
-		stopAll: key.NewBinding(
+		StopAll: key.NewBinding(
 			key.WithKeys("p"),
 			key.WithHelp("p", "stop all"),
 		),
 	}
 }
 
-// Render prints an customItem.
+// Render prints an listItem.
 func (d CustomDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	var (
 		title, desc  string
@@ -84,7 +84,7 @@ func (d CustomDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		s            = &d.Styles
 	)
 
-	if i, ok := item.(*customItem); ok {
+	if i, ok := item.(*ListItem); ok {
 		title = i.Title()
 		desc = i.Description()
 	} else {

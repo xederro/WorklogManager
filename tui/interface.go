@@ -1,16 +1,17 @@
-package main
+package tui
 
 import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/stopwatch"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
 	"github.com/xederro/WorklogManager/jira"
 	"github.com/xederro/WorklogManager/state"
+	"github.com/xederro/WorklogManager/tui/issueList"
 	"os"
 	"time"
 )
@@ -39,39 +40,19 @@ var (
 
 type worklogResponse struct {
 	err      error
-	affected *customItem
+	affected *issueList.ListItem
 }
 
-type customItem struct {
-	issue     *jira.Issue
-	stopwatch *stopwatch.Model
-	logText   string
-}
-
-func (i *customItem) Title() string                  { return *i.issue.ID }
-func (i *customItem) Description() string            { return i.stopwatch.View() }
-func (i *customItem) FilterValue() string            { return *i.issue.ID }
-func (i *customItem) GetLogText() *string            { return &i.logText }
-func (i *customItem) GetStopwatch() *stopwatch.Model { return i.stopwatch }
-func (i *customItem) UpdateStopwatch(msg tea.Msg) tea.Cmd {
-	m, cmd := i.stopwatch.Update(msg)
-	i.stopwatch = &m
-	return cmd
-}
-func (i *customItem) GetIssue() *jira.Issue {
-	return i.issue
-}
-
-type model struct {
+type Model struct {
 	list         list.Model
 	login        *huh.Form
 	log          *huh.Form
-	delegateKeys *delegateKeyMap
+	delegateKeys *issueList.DelegateKeyMap
 	state        state.State
 }
 
-func newModel() model {
-	var delegateKeys = newDelegateKeyMap()
+func NewModel() Model {
+	var delegateKeys = issueList.NewDelegateKeyMap()
 	var isToken bool
 	var token string
 	var login string
@@ -107,24 +88,24 @@ func newModel() model {
 		}),
 	)
 
-	// Setup list
-	delegate := newItemDelegate(delegateKeys)
+	// Setup issueList
+	delegate := issueList.NewItemDelegate(delegateKeys)
 	groceryList := list.New(nil, delegate, 0, 0)
 	groceryList.Title = "Issues"
 	groceryList.Styles.Title = titleStyle
 
-	return model{
+	return Model{
 		list:         groceryList,
 		delegateKeys: delegateKeys,
 		login:        form,
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return m.login.Init()
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch m.state.GetState() {
@@ -136,7 +117,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 		if m.login.State == huh.StateCompleted {
-			// Make list of items
+			// Make issueList of items
 			var items []list.Item
 			issues, err := jiraClient.GetIssues()
 			if err != nil {
@@ -144,10 +125,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			for _, issue := range issues.Issues {
 				s := stopwatch.NewWithInterval(time.Second)
-				items = append(items, &customItem{
-					issue:     issue,
-					stopwatch: &s,
-					logText:   "",
+				items = append(items, &issueList.ListItem{
+					Issue:     issue,
+					Stopwatch: &s,
+					LogText:   "",
 				})
 			}
 			m.list.SetItems(items)
@@ -168,42 +149,42 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			switch {
-			case key.Matches(msg, m.delegateKeys.choose):
+			case key.Matches(msg, m.delegateKeys.Choose):
 				status := ""
-				if m.list.SelectedItem().(*customItem).GetStopwatch().Running() {
-					status = fmt.Sprintf("Stopped %s Stopwatch", *m.list.SelectedItem().(*customItem).issue.Key)
+				if m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Running() {
+					status = fmt.Sprintf("Stopped %s Stopwatch", *m.list.SelectedItem().(*issueList.ListItem).Issue.Key)
 				} else {
-					status = fmt.Sprintf("Started %s Stopwatch", *m.list.SelectedItem().(*customItem).issue.Key)
+					status = fmt.Sprintf("Started %s Stopwatch", *m.list.SelectedItem().(*issueList.ListItem).Issue.Key)
 				}
 
 				cmds = append(cmds, m.list.NewStatusMessage(statusMessageStyle(status)))
-				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Toggle())
+				cmds = append(cmds, m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Toggle())
 				break
-			case key.Matches(msg, m.delegateKeys.stopAll):
+			case key.Matches(msg, m.delegateKeys.StopAll):
 				cmds = append(cmds, m.list.NewStatusMessage(
 					statusMessageStyle("Stopped All Stopwatches"),
 				))
 				for _, item := range m.list.Items() {
-					cmds = append(cmds, item.(*customItem).GetStopwatch().Stop())
+					cmds = append(cmds, item.(*issueList.ListItem).GetStopwatch().Stop())
 				}
 				break
-			case key.Matches(msg, m.delegateKeys.worklog):
+			case key.Matches(msg, m.delegateKeys.Worklog):
 				cmds = append(cmds, m.list.NewStatusMessage(
 					statusMessageStyle(
-						fmt.Sprintf("Sending %s Worklog", *m.list.SelectedItem().(*customItem).issue.Key),
+						fmt.Sprintf("Sending %s Worklog", *m.list.SelectedItem().(*issueList.ListItem).Issue.Key),
 					),
 				))
 
-				cmds = append(cmds, m.list.SelectedItem().(*customItem).GetStopwatch().Stop())
+				cmds = append(cmds, m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Stop())
 				m.log = huh.NewForm(
 					huh.NewGroup(
 						huh.NewText().
 							Title(fmt.Sprintf(
 								"%s @ %s",
-								m.list.SelectedItem().(*customItem).GetStopwatch().View(),
-								m.list.SelectedItem().(*customItem).Title()),
+								m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().View(),
+								m.list.SelectedItem().(*issueList.ListItem).Title()),
 							).
-							Value(m.list.SelectedItem().(*customItem).GetLogText()),
+							Value(m.list.SelectedItem().(*issueList.ListItem).GetLogText()),
 					),
 				)
 				cmds = append(cmds, m.log.Init())
@@ -227,14 +208,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.list.StartSpinner())
 			currSending++
 			go func(ch chan tea.Msg) {
-				t := int(m.list.SelectedItem().(*customItem).GetStopwatch().Elapsed().Seconds())
+				t := int(m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Elapsed().Seconds())
 				w := jira.Worklog{
-					Comment:          m.list.SelectedItem().(*customItem).GetLogText(),
+					Comment:          m.list.SelectedItem().(*issueList.ListItem).GetLogText(),
 					TimeSpentSeconds: &t,
 					Started:          &startTime,
 				}
 
-				i := m.list.SelectedItem().(*customItem)
+				i := m.list.SelectedItem().(*issueList.ListItem)
 				err := jiraClient.AddWorklogToIssue(&w, i.GetIssue())
 				ch <- worklogResponse{
 					err:      err,
@@ -288,12 +269,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	for _, item := range m.list.Items() {
-		cmds = append(cmds, item.(*customItem).UpdateStopwatch(msg))
+		cmds = append(cmds, item.(*issueList.ListItem).UpdateStopwatch(msg))
 	}
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m Model) View() string {
 	switch m.state.GetState() {
 	case state.LOGIN:
 		return formStyle(m.login.View())
@@ -303,18 +284,6 @@ func (m model) View() string {
 		return formStyle(m.log.View())
 	}
 	panic("unreachable")
-}
-
-func main() {
-	server := os.Getenv("JIRA_URL")
-	if server == "" {
-		panic("JIRA_URL environment variable not set. Example: https://jira.test.server.com/rest/api/2/")
-	}
-	jiraClient.SetUrlBase(server)
-	if _, err := tea.NewProgram(newModel(), tea.WithAltScreen()).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
-	}
 }
 
 func validator(login *string) func(string) error {
