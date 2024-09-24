@@ -1,8 +1,7 @@
 package state
 
 const (
-	LOGIN = iota
-	TICKETS
+	TICKETS = iota
 	WORKLOG
 )
 
@@ -13,14 +12,9 @@ type State struct {
 
 func NewState() *State {
 	return &State{
-		state: LOGIN,
+		state: TICKETS,
 		new:   true,
 	}
-}
-
-func (s *State) Login() {
-	s.new = true
-	s.state = TICKETS
 }
 
 func (s *State) LogWork() {

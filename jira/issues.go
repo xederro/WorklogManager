@@ -19,7 +19,7 @@ type Issue struct {
 }
 
 func (j Jira) GetIssues() (*Issues, error) {
-	if a, ok := j.getAuth().(*tokenAuth); ok && a.Token == "test" {
+	if a, ok := j.getAuth().(token); ok && a == "test" {
 		return j.getTestIssues()
 	}
 

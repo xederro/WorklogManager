@@ -19,25 +19,9 @@ func (j *Jira) SetUrlBase(urlBase string) {
 	UrlBase = urlBase
 }
 
-func (j *Jira) SetBasicAuth(username, password string) error {
-	jiraAuth = &basicAuth{
-		Pass:  password,
-		Login: username,
-	}
-
-	_, err := j.Request("GET", fmt.Sprintf("%s/myself", UrlBase), nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (j *Jira) SetTokenAuth(token string) error {
-	jiraAuth = &tokenAuth{
-		Token: token,
-	}
-
-	if token == "test" {
+func (j *Jira) SetAuth(authToken string) error {
+	jiraAuth = token(authToken)
+	if authToken == "test" {
 		return nil
 	}
 

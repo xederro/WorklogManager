@@ -45,99 +45,54 @@ type worklogResponse struct {
 
 type Model struct {
 	list         list.Model
-	login        *huh.Form
 	log          *huh.Form
 	delegateKeys *issueList.DelegateKeyMap
-	state        state.State
+	state        *state.State
 }
 
 func NewModel() Model {
 	var delegateKeys = issueList.NewDelegateKeyMap()
-	var isToken bool
-	var token string
-	var login string
-	var pass string
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Do you have token?").
-				Value(&isToken),
-		),
-		huh.NewGroup(
-			huh.NewInput().
-				Title("Login").
-				Prompt("> ").
-				Value(&login),
-			huh.NewInput().
-				Title("Password").
-				Prompt("> ").
-				EchoMode(huh.EchoModePassword).
-				Value(&pass).
-				Validate(validator(&login)),
-		).WithHideFunc(func() bool {
-			return isToken
-		}),
-		huh.NewGroup(
-			huh.NewInput().
-				Title("Token").
-				Prompt("> ").
-				Value(&token).
-				Validate(jiraClient.SetTokenAuth),
-		).WithHideFunc(func() bool {
-			return !isToken
-		}),
-	)
 
 	// Setup issueList
 	delegate := issueList.NewItemDelegate(delegateKeys)
-	groceryList := list.New(nil, delegate, 0, 0)
-	groceryList.Title = "Issues"
-	groceryList.Styles.Title = titleStyle
+	issues := list.New(nil, delegate, 0, 0)
+	issues.Title = "Issues"
+	issues.Styles.Title = titleStyle
+
+	// Make issueList of items
+	var items []list.Item
+	issuesList, err := jiraClient.GetIssues()
+	if err != nil {
+		panic(err)
+	}
+	for _, issue := range issuesList.Issues {
+		s := stopwatch.NewWithInterval(time.Second)
+		items = append(items, &issueList.ListItem{
+			Issue:     issue,
+			Stopwatch: &s,
+			LogText:   "",
+		})
+	}
+	issues.SetItems(items)
 
 	return Model{
-		list:         groceryList,
+		list:         issues,
 		delegateKeys: delegateKeys,
-		login:        form,
+		state:        state.NewState(),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.login.Init()
+	tw, th, _ := term.GetSize(os.Stdout.Fd())
+	h, v := appStyle.GetFrameSize()
+	m.list.SetSize(tw-h, th-v)
+	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch m.state.GetState() {
-	case state.LOGIN:
-		form, cmd := m.login.Update(msg)
-		if f, ok := form.(*huh.Form); ok {
-			m.login = f
-		}
-		cmds = append(cmds, cmd)
-
-		if m.login.State == huh.StateCompleted {
-			// Make issueList of items
-			var items []list.Item
-			issues, err := jiraClient.GetIssues()
-			if err != nil {
-				panic(err)
-			}
-			for _, issue := range issues.Issues {
-				s := stopwatch.NewWithInterval(time.Second)
-				items = append(items, &issueList.ListItem{
-					Issue:     issue,
-					Stopwatch: &s,
-					LogText:   "",
-				})
-			}
-			m.list.SetItems(items)
-			m.state.Login()
-			tw, th, _ := term.GetSize(os.Stdout.Fd())
-			h, v := appStyle.GetFrameSize()
-			m.list.SetSize(tw-h, th-v)
-		}
-		break
 	case state.TICKETS:
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
@@ -276,18 +231,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	switch m.state.GetState() {
-	case state.LOGIN:
-		return formStyle(m.login.View())
 	case state.TICKETS:
 		return formStyle(m.list.View())
 	case state.WORKLOG:
 		return formStyle(m.log.View())
 	}
 	panic("unreachable")
-}
-
-func validator(login *string) func(string) error {
-	return func(pass string) error {
-		return jiraClient.SetBasicAuth(*login, pass)
-	}
 }
