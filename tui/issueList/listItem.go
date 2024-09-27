@@ -13,7 +13,7 @@ type ListItem struct {
 	LogText   string
 }
 
-func (i *ListItem) Title() string                  { return fmt.Sprintf("%s %s", *i.Issue.Key, *i.Issue.Fields.Summary) }
+func (i *ListItem) Title() string                  { return fmt.Sprintf("%s", *i.Issue.Key) }
 func (i *ListItem) Description() string            { return i.Stopwatch.View() }
 func (i *ListItem) FilterValue() string            { return i.Title() }
 func (i *ListItem) GetLogText() *string            { return &i.LogText }

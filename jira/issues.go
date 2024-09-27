@@ -3,9 +3,11 @@ package jira
 import (
 	"encoding/json"
 	"errors"
+	_ "embed"
 	"fmt"
-	"os"
 )
+//go:embed data/exampleIssues.json
+var exampleIssues []byte
 
 type Issues struct {
 	Issues []*Issue `json:"issues,omitempty"`
@@ -43,13 +45,8 @@ func (j *Jira) GetIssues() (*Issues, error) {
 }
 
 func (j *Jira) getTestIssues() (*Issues, error) {
-	body, err := os.ReadFile("data/exampleIssues.json")
-	if err != nil {
-		return nil, err
-	}
-
 	i := &Issues{}
-	err = json.Unmarshal(body, i)
+	err := json.Unmarshal(exampleIssues, i)
 	if err != nil {
 		return nil, err
 	}
