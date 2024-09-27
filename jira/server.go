@@ -46,7 +46,9 @@ func (j *Jira) Request(method, url string, body io.Reader) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK &&
+		resp.StatusCode != http.StatusCreated &&
+		resp.StatusCode != http.StatusAccepted {
 		return []byte{}, errors.New(resp.Status)
 	}
 

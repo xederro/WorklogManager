@@ -27,7 +27,7 @@ type Worklog struct {
 	IssueID          *string `json:"issueId,omitempty"`
 }
 
-func (j Jira) AddWorklogToIssue(w *Worklog, i *Issue) error {
+func (j *Jira) AddWorklogToIssue(w *Worklog, i *Issue) error {
 	body, err := json.Marshal(*w)
 	if err != nil {
 		return err

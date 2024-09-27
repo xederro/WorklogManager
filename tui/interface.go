@@ -207,12 +207,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				cmds = append(
 					cmds,
+					worklogResp.affected.GetStopwatch().Reset(),
 					m.list.NewStatusMessage(
 						statusMessageStyle(
 							fmt.Sprintf("Worklog sent to %s", *worklogResp.affected.GetIssue().Key),
 						),
 					),
-					worklogResp.affected.GetStopwatch().Reset(),
 				)
 			}
 			if currSending == 0 {

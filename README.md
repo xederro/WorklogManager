@@ -1,4 +1,4 @@
-# WorklogManager
+# WorklogManager - ***WIP***
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/xederro/WorklogManager)](https://golang.org/)
 [![License](https://img.shields.io/github/license/xederro/WorklogManager)](LICENSE)
@@ -35,12 +35,12 @@ Run the built executable from the terminal:
 
 ### Linux
 ```bash
-export JIRA_URL="https://<jira_server>/rest/api/2/" && ./WorklogManager
+export JIRA_URL="https://<jira_server>/rest/api/2" && export JIRA_PAT="<PAT>" && ./WorklogManager
 ```
 
 ### Windows
 ```bash
-$env:JIRA_URL="https://<jira_server>/rest/api/2/"; ./WorklogManager.exe
+$env:JIRA_URL="https://<jira_server>/rest/api/2"; $env:JIRA_PAT="<PAT>"; ./WorklogManager.exe
 ```
 
 ## Demo

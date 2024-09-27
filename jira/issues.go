@@ -18,12 +18,13 @@ type Issue struct {
 	Fields *Fields `json:"fields,omitempty"`
 }
 
-func (j Jira) GetIssues() (*Issues, error) {
+func (j *Jira) GetIssues() (*Issues, error) {
 	if a, ok := j.getAuth().(token); ok && a == "test" {
 		return j.getTestIssues()
 	}
 
-	body, err := j.Request("GET", fmt.Sprintf("%s/search?jql=assignee in(currentUser())AND status!=closed", UrlBase), nil)
+	query := "?jql=assignee%20in(currentUser())AND%20status!=closed"
+	body, err := j.Request("GET", fmt.Sprintf("%s/search%s", UrlBase, query), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func (j Jira) GetIssues() (*Issues, error) {
 	return i, nil
 }
 
-func (j Jira) getTestIssues() (*Issues, error) {
+func (j *Jira) getTestIssues() (*Issues, error) {
 	body, err := os.ReadFile("data/exampleIssues.json")
 	if err != nil {
 		return nil, err
