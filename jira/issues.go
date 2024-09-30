@@ -1,11 +1,12 @@
 package jira
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
-	_ "embed"
 	"fmt"
 )
+
 //go:embed data/exampleIssues.json
 var exampleIssues []byte
 
@@ -25,7 +26,7 @@ func (j *Jira) GetIssues() (*Issues, error) {
 		return j.getTestIssues()
 	}
 
-	query := "?jql=assignee%20in(currentUser())AND%20status!=closed"
+	query := "?jql=assignee%20in(currentUser())AND%20status!=Done"
 	body, err := j.Request("GET", fmt.Sprintf("%s/search%s", UrlBase, query), nil)
 	if err != nil {
 		return nil, err
