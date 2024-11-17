@@ -26,7 +26,8 @@ func (j *Jira) GetIssues() (*Issues, error) {
 		return j.getTestIssues()
 	}
 
-	query := "?jql=assignee%20in(currentUser())AND%20status!=Done"
+	query := "?jql=assignee%20in(currentUser())AND%20status!=DoneAND%20sprint%20in%20openSprints()"
+	//query := "?jql=assignee%20in(currentUser())AND%20status!=Done"
 	body, err := j.Request("GET", fmt.Sprintf("%s/search%s", UrlBase, query), nil)
 	if err != nil {
 		return nil, err

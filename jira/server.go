@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 var (
@@ -29,6 +30,23 @@ func (j *Jira) SetAuth(authToken string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (j *Jira) SetAuthRepeat(times int, wait time.Duration, authToken string) error {
+	for {
+		err := j.SetAuth(authToken)
+		if err != nil {
+			if times == 0 {
+				return err
+			}
+			times--
+			time.Sleep(wait)
+			continue
+		}
+		break
+	}
+
 	return nil
 }
 

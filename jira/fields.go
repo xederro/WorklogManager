@@ -1,20 +1,20 @@
 package jira
 
 type Fields struct {
-	Aggregatetimeoriginalestimate *int      `json:"aggregatetimeoriginalestimate,omitempty"`
+	AggregateTimeOriginalEstimate *int      `json:"aggregatetimeoriginalestimate,omitempty"`
 	Assignee                      *Person   `json:"assignee,omitempty"`
 	Reporter                      *Person   `json:"reporter,omitempty"`
 	Creator                       *Person   `json:"creator,omitempty"`
-	Issuetype                     *Name     `json:"issuetype,omitempty"`
+	IssueType                     *Name     `json:"issuetype,omitempty"`
 	Description                   *string   `json:"description,omitempty"`
 	Summary                       *string   `json:"summary,omitempty"`
 	Priority                      *Name     `json:"priority,omitempty"`
 	Status                        *Name     `json:"status,omitempty"`
-	Timeoriginalestimate          *int      `json:"timeoriginalestimate,omitempty"`
-	Aggregatetimeestimate         *int      `json:"aggregatetimeestimate,omitempty"`
+	TimeOriginalEstimate          *int      `json:"timeoriginalestimate,omitempty"`
+	AggregateTimeEstimate         *int      `json:"aggregatetimeestimate,omitempty"`
 	Progress                      *Progress `json:"progress,omitempty"`
-	Aggregateprogress             *Progress `json:"aggregateprogress,omitempty"`
-	Timespent                     *int      `json:"timespent,omitempty"`
-	Aggregatetimespent            *int      `json:"aggregatetimespent,omitempty"`
+	AggregateProgress             *Progress `json:"aggregateprogress,omitempty"`
+	TimeSpent                     *int      `json:"timespent,omitempty"`
+	AggregateTimeSpent            *int      `json:"aggregatetimespent,omitempty"`
 	Workratio                     *int      `json:"workratio,omitempty"`
 }

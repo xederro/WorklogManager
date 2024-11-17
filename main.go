@@ -6,6 +6,7 @@ import (
 	"github.com/xederro/WorklogManager/jira"
 	"github.com/xederro/WorklogManager/tui"
 	"os"
+	"time"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	}
 	j := jira.Jira{}
 	j.SetUrlBase(server)
-	err := j.SetAuth(token)
+	err := j.SetAuthRepeat(15, time.Minute, token)
 	if err != nil {
 		panic(fmt.Sprintf("There was a problem with checking your PAT: %s", err.Error()))
 	}
