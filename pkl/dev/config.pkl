@@ -1,0 +1,12 @@
+amends ".../Config.pkl"
+
+jira {
+  jira_url = "https://your-jira-instance.atlassian.net"
+  jira_refetch_interval = 15.min
+  default_worklog_comment = "Work"
+  server_type = "cloud"
+  cloud_config {
+    email = "email@example.com"
+    api_token = "your_api_token"
+  }
+}

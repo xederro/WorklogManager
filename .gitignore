@@ -3,3 +3,4 @@
 **/*.exe
 WorklogManager
 WorklogManager.exe
+/gen/**/*

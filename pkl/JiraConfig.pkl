@@ -1,0 +1,35 @@
+@go.Package { name = "github.com/xederro/WorklogManager/gen/jiraConfig" }
+module pkl.JiraConfig
+
+import "package://pkg.pkl-lang.org/pkl-go/pkl.golang@0.10.0#/go.pkl"
+
+/// The hostname for the jira server.
+jira_url: String
+
+/// The interval between fetches.
+jira_refetch_interval: Duration = 15.min
+
+/// The worklog comment for the jira server.
+default_worklog_comment: String
+
+/// The type of the jira server.
+server_type: "on-premise"|"cloud"
+
+/// The configuration for the jira cloud server.
+cloud_config: JiraCloudConfig?((server_type == "cloud").implies(this != null))
+
+/// The configuration for the jira on-premise server.
+on_premise_config: JiraOnPremiseConfig?((server_type == "on-premise").implies(this != null))
+
+class JiraCloudConfig {
+    /// The email for the jira cloud server.
+    email: String
+
+    /// The api token for the jira cloud server.
+    api_token: String
+}
+
+class JiraOnPremiseConfig {
+    /// The PAT token for the jira on-premise server.
+    pat: String
+}
