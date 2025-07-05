@@ -4,10 +4,10 @@ module pkl.JiraConfig
 import "package://pkg.pkl-lang.org/pkl-go/pkl.golang@0.10.0#/go.pkl"
 
 /// The hostname for the jira server.
-jira_url: String
+url: String
 
 /// The interval between fetches.
-jira_refetch_interval: Duration = 15.min
+refetch_interval: Duration = 15.min
 
 /// The worklog comment for the jira server.
 default_worklog_comment: String
