@@ -15,18 +15,31 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.24'
 
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
+    - name: Install pkl
+      uses: pkl-community/setup-pkl@v0
+      with:
+        pkl-version: 0.28.2
+
     - name: Prepare env
-      run: go get .
+      run: |
+        go get .
+        go install github.com/apple/pkl-go/cmd/pkl-gen-go@v0.10.0
+
+    - name: Prepare env
+      run: go generate ./generate.go
 
     - name: Test
       run: go test -v ./...
+
+    - name: Package pkl module
+      run: pkl project package ./pkl/
 
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v6

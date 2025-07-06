@@ -1,0 +1,17 @@
+builds:
+  - id: "WorklogManager"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: "./cmd/main.go"
+    binary: "WorklogManager"
+
+release:
+  extra_files:
+    - glob: ".out/WorklogManager*/*"
