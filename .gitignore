@@ -1,6 +1,6 @@
-/config/config.go
 .idea/
 **/*.exe
 WorklogManager
 WorklogManager.exe
 internal/gen/**/*
+.out/
