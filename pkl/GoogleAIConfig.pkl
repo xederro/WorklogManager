@@ -1,5 +1,5 @@
 @go.Package { name = "github.com/xederro/WorklogManager/internal/gen/googleAIConfig" }
-module pkl.GoogleAIConfig
+module GoogleAIConfig
 
 import "package://pkg.pkl-lang.org/pkl-go/pkl.golang@0.10.0#/go.pkl"
 
