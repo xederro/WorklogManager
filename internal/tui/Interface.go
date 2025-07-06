@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"github.com/andygrunwald/go-jira"
 	"github.com/charmbracelet/bubbles/key"
@@ -13,6 +14,7 @@ import (
 	"github.com/xederro/WorklogManager/internal/config"
 	"github.com/xederro/WorklogManager/internal/state"
 	"github.com/xederro/WorklogManager/internal/tui/issueList"
+	"google.golang.org/genai"
 	"os"
 	"time"
 )
@@ -61,7 +63,7 @@ func NewModel() Model {
 
 	// Make an issueList of items
 	var items []list.Item
-	issuesList, _, err := config.JiraClient.Issue.Search("assignee = currentUser() AND statusCategory != Done AND sprint in openSprints() ORDER BY updated DESC", nil)
+	issuesList, _, err := config.JiraClient.Issue.Search("assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -131,17 +133,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				))
 
 				cmds = append(cmds, m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Stop())
-				m.log = huh.NewForm(
-					huh.NewGroup(
-						huh.NewText().
-							Title(fmt.Sprintf(
-								"%s @ %s",
-								m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().View(),
-								m.list.SelectedItem().(*issueList.ListItem).Title()),
-							).
-							Value(m.list.SelectedItem().(*issueList.ListItem).GetLogText()),
-					),
-				)
+
+				if config.Conf.UseAi {
+					m.log = huh.NewForm(
+						huh.NewGroup(
+							huh.NewText().
+								Title(fmt.Sprintf(
+									"%s @ %s",
+									m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().View(),
+									m.list.SelectedItem().(*issueList.ListItem).Title()),
+								).
+								Value(m.list.SelectedItem().(*issueList.ListItem).GetLogText()),
+							huh.NewSelect[int]().
+								Options(
+									huh.NewOption("NAAAH!", 0).Selected(true),
+									huh.NewOption("YIS!", 1),
+								).Title("Use AI?").
+								Value(&m.list.SelectedItem().(*issueList.ListItem).UseAi),
+						),
+					)
+				} else {
+					m.log = huh.NewForm(
+						huh.NewGroup(
+							huh.NewText().
+								Title(fmt.Sprintf(
+									"%s @ %s",
+									m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().View(),
+									m.list.SelectedItem().(*issueList.ListItem).Title()),
+								).
+								Value(m.list.SelectedItem().(*issueList.ListItem).GetLogText()),
+						),
+					)
+				}
+
 				cmds = append(cmds, m.log.Init())
 				m.state.LogWork()
 				break
@@ -164,8 +188,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currSending++
 			go func(ch chan tea.Msg) {
 				t := int(m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Elapsed().Seconds())
+
+				comment := *m.list.SelectedItem().(*issueList.ListItem).GetLogText()
+				if m.list.SelectedItem().(*issueList.ListItem).UseAi == 1 {
+					result, err := config.GoogleClient.Models.GenerateContent(
+						context.Background(),
+						config.Conf.GoogleAi.DefaultModel,
+						genai.Text(config.Conf.GoogleAi.DefaultPrompt+" "+comment),
+						&genai.GenerateContentConfig{
+							ThinkingConfig: &genai.ThinkingConfig{
+								ThinkingBudget:  nil,
+								IncludeThoughts: false,
+							},
+						},
+					)
+					if err != nil {
+						ch <- worklogResponse{err: err}
+						return
+					}
+					comment = result.Text()
+				}
+
 				w := jira.WorklogRecord{
-					Comment:          *m.list.SelectedItem().(*issueList.ListItem).GetLogText(),
+					Comment:          comment,
 					TimeSpentSeconds: t,
 					Started:          (*jira.Time)(&startTime),
 				}

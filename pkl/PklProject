@@ -1,8 +1,0 @@
-amends "pkl:Project"
-
-package {
-  name = "WorklogManager"
-  baseUri = "package://pkg.pkl-lang.org/github.com/stefma/pkl-gha/\(name)"
-  version = "0.1.0"
-  packageZipUrl = "https://github.com/stefma/pkl-gha/releases/download/\(name)@\(version)/\(name)@\(version).zip"
-}

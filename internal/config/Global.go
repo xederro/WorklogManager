@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"github.com/andygrunwald/go-jira"
-	"github.com/apple/pkl-go/pkl"
 	"github.com/xederro/WorklogManager/internal/gen/config"
 	"google.golang.org/genai"
 	"net/http"
@@ -13,13 +12,8 @@ var Conf *config.Config
 var JiraClient *jira.Client
 var GoogleClient *genai.Client
 
-func Init() {
-	evaluator, err := pkl.NewProjectEvaluator(context.Background(), "pkl/", pkl.PreconfiguredOptions)
-	if err != nil {
-		panic(err)
-	}
-
-	cfg, err := config.Load(context.Background(), evaluator, pkl.FileSource("pkl/dev/config.pkl"))
+func Init(path string) {
+	cfg, err := config.LoadFromPath(context.Background(), path)
 	if err != nil {
 		panic(err)
 	}

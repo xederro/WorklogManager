@@ -11,6 +11,7 @@ type ListItem struct {
 	Issue     *jira.Issue
 	Stopwatch *stopwatch.Model
 	LogText   string
+	UseAi     int
 }
 
 func (i *ListItem) Title() string {
