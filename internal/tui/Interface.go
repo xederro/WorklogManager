@@ -72,7 +72,7 @@ func NewModel() Model {
 		items = append(items, &issueList.ListItem{
 			Issue:     &issue,
 			Stopwatch: &s,
-			LogText:   "",
+			LogText:   config.Conf.Jira.DefaultWorklogComment,
 		})
 	}
 	issues.SetItems(items)

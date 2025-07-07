@@ -15,19 +15,25 @@ As a developer who struggled with accurately logging the time spent on various t
 
 ## Features
 
-- **Track Time Spent on Tasks:** Easily start, pause, and stop timers for specific JIRA tasks.
+- **Track Time Spent on Tasks:** Start, pause, and stop timers for specific JIRA tasks.
 - **Log Work Directly to JIRA:** Log the tracked time to the appropriate JIRA issues using the REST API (v2).
+- **Create Worklogs with Google AI:** Use Google AI to better prepare your worklog.
 - **TUI Interface:** Navigate and interact with the app entirely from the terminal, using a simple and intuitive interface.
 
-## Installation
+## Building
 
-To install WorklogManager, you need to have Go >= 1.23 installed on your machine. You can then clone the repository and build the application:
+To build WorklogManager, you need to have Go >= 1.24 and pkl installed on your machine. You can then clone the repository and build the application:
 
 ```bash
 git clone https://github.com/xederro/WorklogManager.git
 cd WorklogManager
+go generate ./generate.go
 go build
 ```
+
+## Installation
+You can download the latest release of WorklogManager from the [Releases page](https://github.com/xederro/WorklogManager/releases). 
+The release includes pre-built binaries for both Linux and Windows.
 
 ## Usage
 
@@ -35,12 +41,37 @@ Run the built executable from the terminal:
 
 ### Linux
 ```bash
-export JIRA_URL="https://<jira_server>/rest/api/2" && export JIRA_PAT="<PAT>" && ./WorklogManager
+./WorklogManager [-config <path_to_config_file>]
 ```
 
 ### Windows
 ```bash
-$env:JIRA_URL="https://<jira_server>/rest/api/2"; $env:JIRA_PAT="<PAT>"; ./WorklogManager.exe
+./WorklogManager.exe [-config <path_to_config_file>]
+```
+
+### Configuration
+WorklogManager requires a configuration file to connect to your JIRA instance. You can create a configuration file in PKL format. Below is an example of how to structure your configuration file:
+
+```pkl
+amends "package://github.com/xederro/WorklogManager/releases/download/1.2.0-SNAPSHOT/WorklogManager@1.2.0-SNAPSHOT#/Config.pkl"
+
+jira {
+  url = "https://your-jira-instance.atlassian.net"
+  refetch_interval = 15.min
+  default_worklog_comment = "Work"
+  server_type = "cloud"
+  cloud_config {
+    email = "email@example.com"
+    api_token = "your_api_token"
+  }
+  on_premise_config = null
+}
+use_ai = true
+google_ai { 
+  APIKey = "your_google_api_key"
+  default_model = "gemini-2.5-flash"
+  default_prompt = "You are Senior Jira Worklog Writer. Write a short worklog description from the following information:"
+}
 ```
 
 ## Demo
