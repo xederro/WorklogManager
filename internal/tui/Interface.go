@@ -20,7 +20,7 @@ import (
 
 var (
 	startTime   = time.Now()
-	ch          = make(chan tea.Cmd, 2)
+	Ch          = make(chan tea.Cmd, 2)
 	currSending = 0
 
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
@@ -56,11 +56,9 @@ func NewModel() Model {
 	issues.Styles.Title = titleStyle
 
 	// Make a worklogList of items
-	issuesList, _, err := config.JiraClient.Issue.Search("assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC", nil)
-	if err != nil {
-		panic(err)
-	}
-	issues, _ = issues.SetWorklogs(issuesList)
+	go func() {
+		Ch <- worklogList.GetItemsToUpdate()
+	}()
 
 	return Model{
 		list:         issues,
@@ -203,7 +201,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				i := m.list.SelectedItem().(*worklogList.WorklogItem)
 				_, _, err := config.JiraClient.Issue.AddWorklogRecord(i.Issue.ID, &w)
 				ch <- worklogList.ReturnCmd(err, i)
-			}(ch)
+			}(Ch)
 			m.log = nil
 		}
 
@@ -221,21 +219,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		break
 	}
 
-	if resp, ok := msg.(worklogList.WorklogResponse); ok {
-		currSending--
-		if resp.Err != nil {
+	switch msg.(type) {
+	case worklogList.WorklogItemsMsg:
+		msg := msg.(worklogList.WorklogItemsMsg)
+		if msg.Err != nil {
 			cmds = append(cmds, m.list.NewStatusMessage(
 				statusMessageStyle(
-					resp.Err.Error(),
+					fmt.Sprintf("Error fetching issues: %s", msg.Err.Error()),
+				),
+			))
+		} else {
+			var cmd tea.Cmd
+			m.list, cmd = m.list.UpdateWorklogs(msg.Issues)
+			cmds = append(
+				cmds,
+				cmd,
+				m.list.NewStatusMessage(
+					statusMessageStyle(
+						fmt.Sprintf("Fetched %d issues", len(msg.Issues)),
+					),
+				),
+			)
+		}
+	case worklogList.WorklogResponse:
+		msg := msg.(worklogList.WorklogResponse)
+		currSending--
+		if msg.Err != nil {
+			cmds = append(cmds, m.list.NewStatusMessage(
+				statusMessageStyle(
+					msg.Err.Error(),
 				),
 			))
 		} else {
 			cmds = append(
 				cmds,
-				resp.Affected.GetStopwatch().Reset(),
+				msg.Affected.GetStopwatch().Reset(),
 				m.list.NewStatusMessage(
 					statusMessageStyle(
-						fmt.Sprintf("Worklog sent to %s", resp.Affected.GetIssue().Key),
+						fmt.Sprintf("Worklog sent to %s", msg.Affected.GetIssue().Key),
 					),
 				),
 			)
@@ -246,7 +267,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	select {
-	case worklogResp := <-ch:
+	case worklogResp := <-Ch:
 		cmds = append(cmds, worklogResp)
 	default:
 		break
@@ -264,6 +285,7 @@ func (m Model) View() string {
 		return formStyle(m.list.View())
 	case state.WORKLOG:
 		return formStyle(m.log.View())
+	default:
+		panic("unreachable")
 	}
-	panic("unreachable")
 }

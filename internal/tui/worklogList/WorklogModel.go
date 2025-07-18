@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"maps"
 	"slices"
+	"strings"
 )
 
 type WorklogModel struct {
@@ -16,8 +17,9 @@ type WorklogModel struct {
 func New(issues []jira.Issue, delegate list.ItemDelegate, width, height int) WorklogModel {
 	m := WorklogModel{
 		Model: list.New(nil, delegate, width, height),
+		items: make(map[string]list.Item),
 	}
-	m.SetWorklogs(issues)
+	m.UpdateWorklogs(issues)
 
 	return m
 }
@@ -29,16 +31,7 @@ func (m WorklogModel) Update(msg tea.Msg) (WorklogModel, tea.Cmd) {
 	return m, cmd
 }
 
-func (m WorklogModel) SetWorklogs(issues []jira.Issue) (WorklogModel, tea.Cmd) {
-	items := make(map[string]list.Item)
-	for _, issue := range issues {
-		items[issue.Key] = NewItem(issue)
-	}
-
-	return m.Update(m.Model.SetItems(slices.Collect(maps.Values(items))))
-}
-
-func (m WorklogModel) UpdateWorklogs(issues []jira.Issue) {
+func (m WorklogModel) UpdateWorklogs(issues []jira.Issue) (WorklogModel, tea.Cmd) {
 	for _, issue := range issues {
 		if _, exists := m.items[issue.Key]; exists {
 			m.items[issue.Key].(*WorklogItem).Issue = &issue
@@ -46,4 +39,13 @@ func (m WorklogModel) UpdateWorklogs(issues []jira.Issue) {
 			m.items[issue.Key] = NewItem(issue)
 		}
 	}
+	items := slices.Collect(maps.Values(m.items))
+	slices.SortFunc(items, orderItems)
+	return m.Update(m.Model.SetItems(items))
+}
+
+func orderItems(a, b list.Item) int {
+	ai := a.(*WorklogItem)
+	bi := b.(*WorklogItem)
+	return strings.Compare(ai.Issue.Key, bi.Issue.Key)
 }
