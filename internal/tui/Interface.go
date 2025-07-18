@@ -6,14 +6,13 @@ import (
 	"github.com/andygrunwald/go-jira"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/stopwatch"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
 	"github.com/xederro/WorklogManager/internal/config"
 	"github.com/xederro/WorklogManager/internal/state"
-	"github.com/xederro/WorklogManager/internal/tui/issueList"
+	"github.com/xederro/WorklogManager/internal/tui/worklogList"
 	"google.golang.org/genai"
 	"os"
 	"time"
@@ -21,7 +20,7 @@ import (
 
 var (
 	startTime   = time.Now()
-	ch          = make(chan tea.Msg, 2)
+	ch          = make(chan tea.Cmd, 2)
 	currSending = 0
 
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
@@ -40,42 +39,28 @@ var (
 			Render
 )
 
-type worklogResponse struct {
-	err      error
-	affected *issueList.ListItem
-}
-
 type Model struct {
-	list         list.Model
+	list         worklogList.WorklogModel
 	log          *huh.Form
-	delegateKeys *issueList.DelegateKeyMap
+	delegateKeys *worklogList.DelegateKeyMap
 	state        *state.State
 }
 
 func NewModel() Model {
-	var delegateKeys = issueList.NewDelegateKeyMap()
+	var delegateKeys = worklogList.NewDelegateKeyMap()
 
-	// Setup issueList
-	delegate := issueList.NewItemDelegate(delegateKeys)
-	issues := list.New(nil, delegate, 0, 0)
+	// Setup worklogList
+	delegate := worklogList.NewWorklogDelegate(delegateKeys)
+	issues := worklogList.New(nil, delegate, 0, 0)
 	issues.Title = "Issues"
 	issues.Styles.Title = titleStyle
 
-	// Make an issueList of items
-	var items []list.Item
+	// Make a worklogList of items
 	issuesList, _, err := config.JiraClient.Issue.Search("assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC", nil)
 	if err != nil {
 		panic(err)
 	}
-	for _, issue := range issuesList {
-		s := stopwatch.NewWithInterval(time.Second)
-		items = append(items, &issueList.ListItem{
-			Issue:     &issue,
-			Stopwatch: &s,
-			LogText:   config.Conf.Jira.DefaultWorklogComment,
-		})
-	}
-	issues.SetItems(items)
+	issues, _ = issues.SetWorklogs(issuesList)
 
 	return Model{
 		list:         issues,
@@ -108,31 +93,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, m.delegateKeys.Choose):
 				status := ""
-				if m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Running() {
-					status = fmt.Sprintf("Stopped %s Stopwatch", m.list.SelectedItem().(*issueList.ListItem).Issue.Key)
+				if m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Running() {
+					status = fmt.Sprintf("Stopped %s Stopwatch", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key)
 				} else {
-					status = fmt.Sprintf("Started %s Stopwatch", m.list.SelectedItem().(*issueList.ListItem).Issue.Key)
+					status = fmt.Sprintf("Started %s Stopwatch", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key)
 				}
 
 				cmds = append(cmds, m.list.NewStatusMessage(statusMessageStyle(status)))
-				cmds = append(cmds, m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Toggle())
+				cmds = append(cmds, m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Toggle())
 				break
 			case key.Matches(msg, m.delegateKeys.StopAll):
 				cmds = append(cmds, m.list.NewStatusMessage(
 					statusMessageStyle("Stopped All Stopwatches"),
 				))
 				for _, item := range m.list.Items() {
-					cmds = append(cmds, item.(*issueList.ListItem).GetStopwatch().Stop())
+					cmds = append(cmds, item.(*worklogList.WorklogItem).GetStopwatch().Stop())
 				}
 				break
 			case key.Matches(msg, m.delegateKeys.Worklog):
 				cmds = append(cmds, m.list.NewStatusMessage(
 					statusMessageStyle(
-						fmt.Sprintf("Sending %s Worklog", m.list.SelectedItem().(*issueList.ListItem).Issue.Key),
+						fmt.Sprintf("Sending %s Worklog", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key),
 					),
 				))
 
-				cmds = append(cmds, m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Stop())
+				cmds = append(cmds, m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Stop())
 
 				if config.Conf.UseAi {
 					m.log = huh.NewForm(
@@ -140,16 +125,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							huh.NewText().
 								Title(fmt.Sprintf(
 									"%s @ %s",
-									m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().View(),
-									m.list.SelectedItem().(*issueList.ListItem).Title()),
+									m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
+									m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
 								).
-								Value(m.list.SelectedItem().(*issueList.ListItem).GetLogText()),
+								Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()),
 							huh.NewSelect[int]().
 								Options(
 									huh.NewOption("NAAAH!", 0).Selected(true),
 									huh.NewOption("YIS!", 1),
 								).Title("Use AI?").
-								Value(&m.list.SelectedItem().(*issueList.ListItem).UseAi),
+								Value(&m.list.SelectedItem().(*worklogList.WorklogItem).UseAi),
 						),
 					)
 				} else {
@@ -158,10 +143,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							huh.NewText().
 								Title(fmt.Sprintf(
 									"%s @ %s",
-									m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().View(),
-									m.list.SelectedItem().(*issueList.ListItem).Title()),
+									m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
+									m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
 								).
-								Value(m.list.SelectedItem().(*issueList.ListItem).GetLogText()),
+								Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()),
 						),
 					)
 				}
@@ -186,11 +171,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state.Logged()
 			cmds = append(cmds, m.list.StartSpinner())
 			currSending++
-			go func(ch chan tea.Msg) {
-				t := int(m.list.SelectedItem().(*issueList.ListItem).GetStopwatch().Elapsed().Seconds())
+			go func(ch chan tea.Cmd) {
+				t := int(m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Elapsed().Seconds())
 
-				comment := *m.list.SelectedItem().(*issueList.ListItem).GetLogText()
-				if m.list.SelectedItem().(*issueList.ListItem).UseAi == 1 {
+				comment := *m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()
+				if m.list.SelectedItem().(*worklogList.WorklogItem).UseAi == 1 {
 					result, err := config.GoogleClient.Models.GenerateContent(
 						context.Background(),
 						config.Conf.GoogleAi.DefaultModel,
@@ -203,7 +188,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						},
 					)
 					if err != nil {
-						ch <- worklogResponse{err: err}
+						ch <- worklogList.ReturnCmd(err, nil)
 						return
 					}
 					comment = result.Text()
@@ -215,12 +200,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Started:          (*jira.Time)(&startTime),
 				}
 
-				i := m.list.SelectedItem().(*issueList.ListItem)
+				i := m.list.SelectedItem().(*worklogList.WorklogItem)
 				_, _, err := config.JiraClient.Issue.AddWorklogRecord(i.Issue.ID, &w)
-				ch <- worklogResponse{
-					err:      err,
-					affected: i,
-				}
+				ch <- worklogList.ReturnCmd(err, i)
 			}(ch)
 			m.log = nil
 		}
@@ -239,37 +221,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		break
 	}
 
+	if resp, ok := msg.(worklogList.WorklogResponse); ok {
+		currSending--
+		if resp.Err != nil {
+			cmds = append(cmds, m.list.NewStatusMessage(
+				statusMessageStyle(
+					resp.Err.Error(),
+				),
+			))
+		} else {
+			cmds = append(
+				cmds,
+				resp.Affected.GetStopwatch().Reset(),
+				m.list.NewStatusMessage(
+					statusMessageStyle(
+						fmt.Sprintf("Worklog sent to %s", resp.Affected.GetIssue().Key),
+					),
+				),
+			)
+		}
+		if currSending == 0 {
+			m.list.StopSpinner()
+		}
+	}
+
 	select {
 	case worklogResp := <-ch:
-		if worklogResp, ok := worklogResp.(worklogResponse); ok {
-			currSending--
-			if worklogResp.err != nil {
-				cmds = append(cmds, m.list.NewStatusMessage(
-					statusMessageStyle(
-						worklogResp.err.Error(),
-					),
-				))
-			} else {
-				cmds = append(
-					cmds,
-					worklogResp.affected.GetStopwatch().Reset(),
-					m.list.NewStatusMessage(
-						statusMessageStyle(
-							fmt.Sprintf("Worklog sent to %s", worklogResp.affected.GetIssue().Key),
-						),
-					),
-				)
-			}
-			if currSending == 0 {
-				m.list.StopSpinner()
-			}
-		}
+		cmds = append(cmds, worklogResp)
 	default:
 		break
 	}
 
 	for _, item := range m.list.Items() {
-		cmds = append(cmds, item.(*issueList.ListItem).UpdateStopwatch(msg))
+		cmds = append(cmds, item.(*worklogList.WorklogItem).UpdateStopwatch(msg))
 	}
 	return m, tea.Batch(cmds...)
 }
