@@ -1,6 +1,7 @@
 package worklogList
 
 import (
+	"fmt"
 	"github.com/andygrunwald/go-jira"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -42,6 +43,14 @@ func (m WorklogModel) UpdateWorklogs(issues []jira.Issue) (WorklogModel, tea.Cmd
 	items := slices.Collect(maps.Values(m.items))
 	slices.SortFunc(items, orderItems)
 	return m.Update(m.Model.SetItems(items))
+}
+
+func (m WorklogModel) GetItem(key string) (list.Item, error) {
+	k, exist := m.items[key]
+	if !exist {
+		return nil, fmt.Errorf("item with key %s not found", key)
+	}
+	return k, nil
 }
 
 func orderItems(a, b list.Item) int {

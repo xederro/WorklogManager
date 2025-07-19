@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"fmt"
 	gojira "github.com/andygrunwald/go-jira"
 	"github.com/charmbracelet/bubbles/key"
@@ -14,7 +13,7 @@ import (
 	"github.com/xederro/WorklogManager/internal/jira"
 	"github.com/xederro/WorklogManager/internal/state"
 	"github.com/xederro/WorklogManager/internal/tui/worklogList"
-	"google.golang.org/genai"
+	"github.com/xederro/WorklogManager/internal/tui/worklogText"
 	"os"
 	"time"
 )
@@ -107,45 +106,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				break
 			case key.Matches(msg, m.delegateKeys.Worklog):
-				cmds = append(cmds, m.list.NewStatusMessage(
-					statusMessageStyle(
-						fmt.Sprintf("Sending %s Worklog", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key),
-					),
-				))
-
 				cmds = append(cmds, m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Stop())
 
-				if config.Conf.UseAi {
-					m.log = huh.NewForm(
-						huh.NewGroup(
-							huh.NewText().
-								Title(fmt.Sprintf(
-									"%s @ %s",
-									m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
-									m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
-								).
-								Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()),
-							huh.NewSelect[int]().
-								Options(
-									huh.NewOption("NAAAH!", 0).Selected(true),
-									huh.NewOption("YIS!", 1),
-								).Title("Use AI?").
-								Value(&m.list.SelectedItem().(*worklogList.WorklogItem).UseAi),
-						),
-					)
-				} else {
-					m.log = huh.NewForm(
-						huh.NewGroup(
-							huh.NewText().
-								Title(fmt.Sprintf(
-									"%s @ %s",
-									m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
-									m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
-								).
-								Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()),
-						),
-					)
-				}
+				m.log = huh.NewForm(
+					huh.NewGroup(
+						worklogText.NewWorklogText(m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key).
+							Title(fmt.Sprintf(
+								"%s @ %s",
+								m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
+								m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
+							).
+							Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()).
+							WithHeight(m.list.Height()),
+					),
+				).WithKeyMap(&worklogText.KeyMap)
 
 				cmds = append(cmds, m.log.Init())
 				m.state.LogWork()
@@ -165,30 +139,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.log.State == huh.StateCompleted {
 			m.state.Logged()
-			cmds = append(cmds, m.list.StartSpinner())
+			cmds = append(cmds, m.list.StartSpinner(), m.list.NewStatusMessage(
+				statusMessageStyle(
+					fmt.Sprintf("Sending %s Worklog", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key),
+				),
+			))
 			currSending++
 			go func(ch chan tea.Cmd) {
 				t := int(m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Elapsed().Seconds())
 
 				comment := *m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()
-				if m.list.SelectedItem().(*worklogList.WorklogItem).UseAi == 1 {
-					result, err := config.GoogleClient.Models.GenerateContent(
-						context.Background(),
-						config.Conf.GoogleAi.DefaultModel,
-						genai.Text(config.Conf.GoogleAi.DefaultPrompt+" "+comment),
-						&genai.GenerateContentConfig{
-							ThinkingConfig: &genai.ThinkingConfig{
-								ThinkingBudget:  nil,
-								IncludeThoughts: false,
-							},
-						},
-					)
-					if err != nil {
-						ch <- worklogList.ReturnCmd(err, nil)
-						return
-					}
-					comment = result.Text()
-				}
 
 				w := gojira.WorklogRecord{
 					Comment:          comment,
@@ -204,17 +164,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, key.NewBinding(
-				key.WithKeys("esc"), //TODO: move to separate object for better visibility
-			)):
-				m.state.Logged()
-				m.log = nil
-				break
-			}
+		case tea.WindowSizeMsg:
+			h, v := appStyle.GetFrameSize()
+			m.log = m.log.WithHeight(msg.Height - v)
+			m.list.SetSize(msg.Width-h, msg.Height-v)
+		case worklogText.WorklogExitMsg:
+			m.state.Logged()
+			m.log = nil
 		}
-		break
 	}
 
 	switch msg.(type) {
@@ -239,6 +196,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				),
 			)
 		}
+		break
 	case worklogList.WorklogResponse:
 		msg := msg.(worklogList.WorklogResponse)
 		currSending--
@@ -262,13 +220,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if currSending == 0 {
 			m.list.StopSpinner()
 		}
+		break
+	case worklogText.WorklogAIMsg:
+		msg := msg.(worklogText.WorklogAIMsg)
+		if msg.Err != nil {
+			cmds = append(cmds, m.list.NewStatusMessage(
+				statusMessageStyle(
+					msg.Err.Error(),
+				),
+			))
+			break
+		}
+
+		item, err := m.list.GetItem(msg.Key)
+		if err != nil {
+			cmds = append(cmds, m.list.NewStatusMessage(
+				statusMessageStyle(
+					msg.Err.Error(),
+				),
+			))
+			break
+		}
+
+		item.(*worklogList.WorklogItem).LogText = msg.WorklogText
+
+		m.log = huh.NewForm(
+			huh.NewGroup(
+				worklogText.NewWorklogText(m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key).
+					Title(fmt.Sprintf(
+						"%s @ %s",
+						m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
+						m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
+					).
+					Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()).
+					WithHeight(m.list.Height()),
+			),
+		).WithKeyMap(&worklogText.KeyMap)
+
+		cmds = append(cmds, m.log.Init())
+		cmds = append(
+			cmds,
+			m.list.NewStatusMessage(
+				statusMessageStyle(
+					fmt.Sprintf("AI generated worklog for: %s", msg.Key),
+				),
+			),
+		)
 	}
 
-	select {
-	case worklogResp := <-config.Ch:
-		cmds = append(cmds, worklogResp)
-	default:
-		break
+	s := len(config.Ch)
+	for i := 0; i < s; i++ {
+		cmds = append(cmds, <-config.Ch)
 	}
 
 	for _, item := range m.list.Items() {
