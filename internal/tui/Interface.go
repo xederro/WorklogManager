@@ -3,7 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
+	gojira "github.com/andygrunwald/go-jira"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbletea"
@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
 	"github.com/xederro/WorklogManager/internal/config"
+	"github.com/xederro/WorklogManager/internal/jira"
 	"github.com/xederro/WorklogManager/internal/state"
 	"github.com/xederro/WorklogManager/internal/tui/worklogList"
 	"google.golang.org/genai"
@@ -20,7 +21,6 @@ import (
 
 var (
 	startTime   = time.Now()
-	Ch          = make(chan tea.Cmd, 2)
 	currSending = 0
 
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
@@ -56,9 +56,7 @@ func NewModel() Model {
 	issues.Styles.Title = titleStyle
 
 	// Make a worklogList of items
-	go func() {
-		Ch <- worklogList.GetItemsToUpdate()
-	}()
+	go config.TriggerUpdate()
 
 	return Model{
 		list:         issues,
@@ -192,16 +190,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					comment = result.Text()
 				}
 
-				w := jira.WorklogRecord{
+				w := gojira.WorklogRecord{
 					Comment:          comment,
 					TimeSpentSeconds: t,
-					Started:          (*jira.Time)(&startTime),
+					Started:          (*gojira.Time)(&startTime),
 				}
 
 				i := m.list.SelectedItem().(*worklogList.WorklogItem)
 				_, _, err := config.JiraClient.Issue.AddWorklogRecord(i.Issue.ID, &w)
 				ch <- worklogList.ReturnCmd(err, i)
-			}(Ch)
+			}(config.Ch)
 			m.log = nil
 		}
 
@@ -220,8 +218,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.(type) {
-	case worklogList.WorklogItemsMsg:
-		msg := msg.(worklogList.WorklogItemsMsg)
+	case jira.WorklogItemsMsg:
+		msg := msg.(jira.WorklogItemsMsg)
 		if msg.Err != nil {
 			cmds = append(cmds, m.list.NewStatusMessage(
 				statusMessageStyle(
@@ -267,7 +265,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	select {
-	case worklogResp := <-Ch:
+	case worklogResp := <-config.Ch:
 		cmds = append(cmds, worklogResp)
 	default:
 		break

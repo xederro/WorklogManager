@@ -53,11 +53,10 @@ Run the built executable from the terminal:
 WorklogManager requires a configuration file to connect to your JIRA instance. You can create a configuration file in PKL format. Below is an example of how to structure your configuration file:
 
 ```pkl
-amends "package://github.com/xederro/WorklogManager/releases/download/1.2.0-SNAPSHOT/WorklogManager@1.2.0-SNAPSHOT#/Config.pkl"
+amends "package://github.com/xederro/WorklogManager/releases/download/1.3.0-SNAPSHOT/WorklogManager@1.3.0-SNAPSHOT#/Config.pkl"
 
 jira {
   url = "https://your-jira-instance.atlassian.net"
-  refetch_interval = 15.min
   default_worklog_comment = "Work"
   server_type = "cloud"
   cloud_config {
@@ -65,9 +64,19 @@ jira {
     api_token = "your_api_token"
   }
   on_premise_config = null
+  request {
+    new {
+      jql = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
+      refetch_interval = 10.min
+    }
+    new {
+      jql = "assignee = currentUser() ORDER BY updated DESC"
+      refetch_interval = 15.min
+    }
+  }
 }
 use_ai = true
-google_ai { 
+google_ai {
   APIKey = "your_google_api_key"
   default_model = "gemini-2.5-flash"
   default_prompt = "You are Senior Jira Worklog Writer. Write a short worklog description from the following information:"

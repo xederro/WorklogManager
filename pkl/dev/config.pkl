@@ -1,16 +1,25 @@
 amends ".../Config.pkl"
 
 jira {
-  url = "https://your-jira-instance.atlassian.net"
-  refetch_interval = 15.min
-  default_worklog_comment = "Work"
+  url = "https://example.jira.com"
+  default_worklog_comment = ""
   server_type = "cloud"
   cloud_config {
     email = "email@example.com"
-    api_token = "your_api_token"
+    api_token = "<PAT>"
+  }
+  requests {
+    new {
+      jql = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
+      refetch_interval = 1.min
+    }
+    new {
+      jql = "assignee = currentUser() ORDER BY updated DESC"
+      refetch_interval = 3.min
+    }
   }
 }
 use_ai = true
 google_ai {
-  APIKey = "your_google_api_key"
+  APIKey = "<TOKEN>"
 }
