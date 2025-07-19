@@ -21,6 +21,7 @@ var (
 	Ch           chan tea.Cmd
 )
 
+// Init initializes the global configs.
 func Init(path string) {
 	cfg, err := config.LoadFromPath(context.Background(), path)
 	if err != nil {
@@ -94,6 +95,7 @@ func Init(path string) {
 	Schedule = s
 }
 
+// Shutdown gracefully shuts down the global configs.
 func Shutdown() error {
 	if Conf == nil {
 		return nil
@@ -109,6 +111,7 @@ func Shutdown() error {
 	return nil
 }
 
+// TriggerUpdate runs all jobs immediately.
 func TriggerUpdate() {
 	if Conf == nil {
 		return

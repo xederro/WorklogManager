@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// WorklogModel is a model for managing a list of worklogs.
 type WorklogModel struct {
 	list.Model
 	items map[string]list.Item

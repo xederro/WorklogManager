@@ -1,5 +1,12 @@
 package state
 
+// State machine for managing the state of the application.
+//           ┌─────LogWork─────┐
+//           │                 ▼
+// O─New─►TICKETS           WORKLOG
+//           ▲                 │
+//           └─────Logged──────┘
+
 const (
 	TICKETS = iota
 	WORKLOG

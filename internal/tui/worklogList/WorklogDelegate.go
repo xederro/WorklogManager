@@ -9,6 +9,7 @@ import (
 	"io"
 )
 
+// WorklogDelegate is a custom delegate for the worklog list.
 type WorklogDelegate struct {
 	list.DefaultDelegate
 }

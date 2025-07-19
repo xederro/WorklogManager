@@ -65,7 +65,7 @@ func (t *WorklogText) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// not block the UI
 			// resulted in race condition
 			// it is to be checked if something can be done about it
-			// for example:
+			// for example,
 			// receive the response in a channel
 			// doesn't update the UI
 			// unless some other thing is done
