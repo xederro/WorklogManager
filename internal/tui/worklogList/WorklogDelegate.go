@@ -23,7 +23,7 @@ func NewWorklogDelegate(keys *DelegateKeyMap) WorklogDelegate {
 		return nil
 	}
 
-	help := []key.Binding{keys.Choose, keys.Worklog, keys.StopAll}
+	help := []key.Binding{keys.Choose, keys.Worklog, keys.StopAll, keys.Refetch}
 
 	d.ShortHelpFunc = func() []key.Binding {
 		return help

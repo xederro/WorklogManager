@@ -124,6 +124,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.log.Init())
 				m.state.LogWork()
 				break
+			case key.Matches(msg, m.delegateKeys.Refetch):
+				config.TriggerUpdate()
+				break
 			}
 		}
 		newListModel, cmd := m.list.Update(msg)
