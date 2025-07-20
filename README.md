@@ -2,7 +2,7 @@
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/xederro/WorklogManager)](https://golang.org/)
 [![License](https://img.shields.io/github/license/xederro/WorklogManager)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/xederro/WorklogManager/go.yaml)](https://github.com/xederro/WorklogManager/actions)
+[![Build Status](https://img.shields.io/github/downloads/xederro/WorklogManager/total)](https://github.com/xederro/WorklogManager/releases)
 [![Release](https://img.shields.io/github/v/release/xederro/WorklogManager)](https://github.com/xederro/WorklogManager/releases)
 
 ## Overview
