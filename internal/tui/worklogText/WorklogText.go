@@ -136,7 +136,13 @@ func (t *WorklogText) Value(value *string) *WorklogText {
 	t.Text = t.Text.Value(value)
 	return t
 }
+
 func (t *WorklogText) WithHeight(height int) huh.Field {
 	t.Text = t.Text.WithHeight(height).(*huh.Text)
+	return t
+}
+
+func (t *WorklogText) WithWidth(width int) huh.Field {
+	t.Text = t.Text.WithWidth(width).(*huh.Text)
 	return t
 }

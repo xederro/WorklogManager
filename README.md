@@ -1,4 +1,4 @@
-# WorklogManager - ***WIP***
+# WorklogManager
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/xederro/WorklogManager)](https://golang.org/)
 [![License](https://img.shields.io/github/license/xederro/WorklogManager)](LICENSE)
@@ -53,7 +53,7 @@ Run the built executable from the terminal:
 WorklogManager requires a configuration file to connect to your JIRA instance. You can create a configuration file in PKL format. Below is an example of how to structure your configuration file:
 
 ```pkl
-amends "package://github.com/xederro/WorklogManager/releases/download/1.2.2/WorklogManager@1.2.2#/Config.pkl"
+amends "package://github.com/xederro/WorklogManager/releases/download/0.2.2/WorklogManager@0.2.2#/Config.pkl"
 
 db_path = "db/db.sqlite"
 jira {
