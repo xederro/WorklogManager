@@ -92,18 +92,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.delegateKeys.Choose):
 				status := ""
 				if m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Running() {
-					status = fmt.Sprintf("Stopped %s Stopwatch", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key)
+					status = fmt.Sprintf(
+						"Stopped %s Stopwatch",
+						m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key)
 				} else {
-					status = fmt.Sprintf("Started %s Stopwatch", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key)
+					status = fmt.Sprintf(
+						"Started %s Stopwatch",
+						m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key)
 				}
 
-				cmds = append(cmds, m.list.NewStatusMessage(statusMessageStyle(status)))
-				cmds = append(cmds, m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Toggle())
+				cmds = append(
+					cmds,
+					m.prepMsg(status),
+					m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Toggle(),
+				)
 				break
 			case key.Matches(msg, m.delegateKeys.StopAll):
-				cmds = append(cmds, m.list.NewStatusMessage(
-					statusMessageStyle("Stopped All Stopwatches"),
-				))
+				cmds = append(cmds, m.prepMsg("Stopped All Stopwatches"))
 				for _, item := range m.list.Items() {
 					cmds = append(cmds, item.(*worklogList.WorklogItem).GetStopwatch().Stop())
 				}
@@ -111,18 +116,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.delegateKeys.Worklog):
 				cmds = append(cmds, m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Stop())
 
-				m.log = huh.NewForm(
-					huh.NewGroup(
-						worklogText.NewWorklogText(m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key).
-							Title(fmt.Sprintf(
-								"%s @ %s",
-								m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
-								m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
-							).
-							Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()).
-							WithHeight(m.list.Height()),
-					),
-				).WithKeyMap(&worklogText.KeyMap)
+				m.log = m.prepareTextArea()
 
 				cmds = append(cmds, m.log.Init())
 				m.state.LogWork()
@@ -145,11 +139,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.log.State == huh.StateCompleted {
 			m.state.Logged()
-			cmds = append(cmds, m.list.StartSpinner(), m.list.NewStatusMessage(
-				statusMessageStyle(
-					fmt.Sprintf("Sending %s Worklog", m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key),
-				),
-			))
+			cmds = append(
+				cmds,
+				m.list.StartSpinner(),
+				m.prepMsg(fmt.Sprintf(
+					"Sending %s Worklog",
+					m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key,
+				)),
+			)
 			currSending++
 			go func(ch chan tea.Cmd) {
 				t := int(m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().Elapsed().Seconds())
@@ -184,22 +181,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case jira.WorklogItemsMsg:
 		msg := msg.(jira.WorklogItemsMsg)
 		if msg.Err != nil {
-			cmds = append(cmds, m.list.NewStatusMessage(
-				statusMessageStyle(
-					fmt.Sprintf("Error fetching issues: %s", msg.Err.Error()),
-				),
-			))
+			cmds = append(cmds, m.prepMsg(fmt.Sprintf("Error fetching issues: %s", msg.Err.Error())))
 		} else {
 			var cmd tea.Cmd
 			m.list, cmd = m.list.UpdateWorklogs(msg.Issues)
 			cmds = append(
 				cmds,
 				cmd,
-				m.list.NewStatusMessage(
-					statusMessageStyle(
-						fmt.Sprintf("Fetched %d issues", len(msg.Issues)),
-					),
-				),
+				m.prepMsg(fmt.Sprintf("Fetched %d issues", len(msg.Issues))),
 			)
 		}
 		break
@@ -207,20 +196,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		msg := msg.(worklogList.WorklogResponse)
 		currSending--
 		if msg.Err != nil {
-			cmds = append(cmds, m.list.NewStatusMessage(
-				statusMessageStyle(
-					msg.Err.Error(),
-				),
-			))
+			cmds = append(cmds, m.prepMsg(msg.Err.Error()))
 		} else {
 			cmds = append(
 				cmds,
 				msg.Affected.GetStopwatch().Reset(),
-				m.list.NewStatusMessage(
-					statusMessageStyle(
-						fmt.Sprintf("Worklog sent to %s", msg.Affected.GetIssue().Key),
-					),
-				),
+				m.prepMsg(fmt.Sprintf("Worklog sent to %s", msg.Affected.GetIssue().Key)),
 			)
 		}
 		if currSending == 0 {
@@ -230,48 +211,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case worklogText.WorklogAIMsg:
 		msg := msg.(worklogText.WorklogAIMsg)
 		if msg.Err != nil {
-			cmds = append(cmds, m.list.NewStatusMessage(
-				statusMessageStyle(
-					msg.Err.Error(),
-				),
-			))
+			cmds = append(cmds, m.prepMsg(msg.Err.Error()))
 			break
 		}
 
 		item, err := m.list.GetItem(msg.Key)
 		if err != nil {
-			cmds = append(cmds, m.list.NewStatusMessage(
-				statusMessageStyle(
-					msg.Err.Error(),
-				),
-			))
+			cmds = append(cmds, m.prepMsg(msg.Err.Error()))
 			break
 		}
 
 		item.(*worklogList.WorklogItem).LogText = msg.WorklogText
 
-		m.log = huh.NewForm(
-			huh.NewGroup(
-				worklogText.NewWorklogText(m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key).
-					Title(fmt.Sprintf(
-						"%s @ %s",
-						m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
-						m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
-					).
-					Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()).
-					WithHeight(m.list.Height()),
-			),
-		).WithKeyMap(&worklogText.KeyMap)
+		m.log = m.prepareTextArea()
 
 		cmds = append(cmds, m.log.Init())
-		cmds = append(
-			cmds,
-			m.list.NewStatusMessage(
-				statusMessageStyle(
-					fmt.Sprintf("AI generated worklog for: %s", msg.Key),
-				),
-			),
-		)
+		cmds = append(cmds, m.prepMsg(fmt.Sprintf("AI generated worklog for: %s", msg.Key)))
 	}
 
 	s := len(config.Ch)
@@ -298,4 +253,24 @@ func (m Model) View() string {
 
 func (m Model) Quit() {
 	m.list.Quit()
+}
+
+func (m Model) prepareTextArea() *huh.Form {
+	return huh.NewForm(
+		huh.NewGroup(
+			worklogText.NewWorklogText(m.list.SelectedItem().(*worklogList.WorklogItem).Issue.Key).
+				Title(fmt.Sprintf(
+					"%s @ %s",
+					m.list.SelectedItem().(*worklogList.WorklogItem).GetStopwatch().View(),
+					m.list.SelectedItem().(*worklogList.WorklogItem).Title()),
+				).
+				Value(m.list.SelectedItem().(*worklogList.WorklogItem).GetLogText()).
+				WithHeight(m.list.Height()).
+				WithWidth(m.list.Width()),
+		),
+	).WithKeyMap(&worklogText.KeyMap)
+}
+
+func (m Model) prepMsg(str string) tea.Cmd {
+	return m.list.NewStatusMessage(statusMessageStyle(str))
 }
