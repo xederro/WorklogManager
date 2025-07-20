@@ -1,4 +1,4 @@
-package issueList
+package worklogList
 
 import (
 	"fmt"
@@ -9,12 +9,13 @@ import (
 	"io"
 )
 
-type CustomDelegate struct {
+// WorklogDelegate is a custom delegate for the worklog list.
+type WorklogDelegate struct {
 	list.DefaultDelegate
 }
 
-func NewItemDelegate(keys *DelegateKeyMap) CustomDelegate {
-	d := CustomDelegate{
+func NewWorklogDelegate(keys *DelegateKeyMap) WorklogDelegate {
+	d := WorklogDelegate{
 		list.NewDefaultDelegate(),
 	}
 
@@ -22,7 +23,7 @@ func NewItemDelegate(keys *DelegateKeyMap) CustomDelegate {
 		return nil
 	}
 
-	help := []key.Binding{keys.Choose, keys.Worklog, keys.StopAll}
+	help := []key.Binding{keys.Choose, keys.Worklog, keys.StopAll, keys.Refetch}
 
 	d.ShortHelpFunc = func() []key.Binding {
 		return help
@@ -39,6 +40,7 @@ type DelegateKeyMap struct {
 	Choose  key.Binding
 	Worklog key.Binding
 	StopAll key.Binding
+	Refetch key.Binding
 }
 
 func (d DelegateKeyMap) ShortHelp() []key.Binding {
@@ -46,6 +48,7 @@ func (d DelegateKeyMap) ShortHelp() []key.Binding {
 		d.Choose,
 		d.Worklog,
 		d.StopAll,
+		d.Refetch,
 	}
 }
 
@@ -55,6 +58,7 @@ func (d DelegateKeyMap) FullHelp() [][]key.Binding {
 			d.Choose,
 			d.Worklog,
 			d.StopAll,
+			d.Refetch,
 		},
 	}
 }
@@ -73,18 +77,22 @@ func NewDelegateKeyMap() *DelegateKeyMap {
 			key.WithKeys("p"),
 			key.WithHelp("p", "stop all"),
 		),
+		Refetch: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "refetch"),
+		),
 	}
 }
 
 // Render prints an listItem.
-func (d CustomDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+func (d WorklogDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	var (
 		title, desc  string
 		matchedRunes []int
 		s            = &d.Styles
 	)
 
-	if i, ok := item.(*ListItem); ok {
+	if i, ok := item.(*WorklogItem); ok {
 		title = i.Title()
 		desc = i.Description()
 	} else {
@@ -122,8 +130,8 @@ func (d CustomDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 	}
 
 	if d.ShowDescription {
-		fmt.Fprintf(w, "%s\n%s", title, desc)
+		_, _ = fmt.Fprintf(w, "%s\n%s", title, desc)
 		return
 	}
-	fmt.Fprintf(w, "%s", title)
+	_, _ = fmt.Fprintf(w, "%s", title)
 }

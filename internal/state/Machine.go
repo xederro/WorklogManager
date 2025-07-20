@@ -1,5 +1,12 @@
 package state
 
+// State machine for managing the state of the application.
+//           ┌─────LogWork─────┐
+//           │                 ▼
+// O─New─►TICKETS           WORKLOG
+//           ▲                 │
+//           └─────Logged──────┘
+
 const (
 	TICKETS = iota
 	WORKLOG
@@ -10,7 +17,7 @@ type State struct {
 	new   bool
 }
 
-func NewState() *State {
+func New() *State {
 	return &State{
 		state: TICKETS,
 		new:   true,

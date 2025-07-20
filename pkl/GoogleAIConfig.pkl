@@ -1,0 +1,15 @@
+@go.Package { name = "github.com/xederro/WorklogManager/internal/gen/googleAIConfig" }
+module GoogleAIConfig
+
+import "package://pkg.pkl-lang.org/pkl-go/pkl.golang@0.10.0#/go.pkl"
+
+/// The key for the Google AI API.
+APIKey: String
+
+/// default model for the Google AI API.
+default_model: String = "gemini-2.5-flash"
+
+/// The default prompt for the Google AI API.
+default_prompt: String = "You are Senior Jira Worklog Writer. Write a short worklog description from the following information:"
+
+

@@ -1,0 +1,9 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "worklogs_schema.sql"
+    queries: "worklogs_queries.sql"
+    gen:
+      go:
+        package: "sqlc"
+        out: "../internal/gen/sqlc"

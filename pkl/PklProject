@@ -1,0 +1,14 @@
+amends "pkl:Project"
+
+package {
+  name = "WorklogManager"
+  authors {
+    "Dawid Jabłoński <xederro@gmail.com>"
+  }
+  version = read?("env:GITHUB_REF_NAME")?? "0.0.0-SNAPSHOT"
+  baseUri = "package://github.com/xederro/WorklogManager/releases/download/\(version)/\(name)"
+  packageZipUrl = "https://github.com/xederro/WorklogManager/releases/download/\(version)/\(name)@\(version).zip"
+  sourceCode = "https://github.com/xederro/WorklogManager/"
+  sourceCodeUrlScheme = "https://github.com/xederro/WorklogManager/blob/\(version)/generated-package%{path}#%{line}-%{endLine}"
+  license = "MIT"
+}

@@ -1,0 +1,45 @@
+@go.Package { name = "github.com/xederro/WorklogManager/internal/gen/jiraConfig" }
+module JiraConfig
+
+import "package://pkg.pkl-lang.org/pkl-go/pkl.golang@0.10.0#/go.pkl"
+
+/// The hostname for the jira server.
+url: String
+
+/// The worklog comment for the jira server.
+default_worklog_comment: String
+
+/// The type of the jira server.
+server_type: "on-premise"|"cloud"
+
+/// The configuration for the jira cloud server.
+cloud_config: JiraCloudConfig?((server_type == "cloud").implies(this != null))
+
+/// The configuration for the jira on-premise server.
+on_premise_config: JiraOnPremiseConfig?((server_type == "on-premise").implies(this != null))
+
+/// Listing of requests to make to the jira server.
+requests: Listing<JiraRequest> = new {
+    new JiraRequest {}
+}
+
+class JiraCloudConfig {
+    /// The email for the jira cloud server.
+    email: String
+
+    /// The api token for the jira cloud server.
+    api_token: String
+}
+
+class JiraOnPremiseConfig {
+    /// The PAT token for the jira on-premise server.
+    pat: String
+}
+
+class JiraRequest {
+    /// The JQL query to use for the request.
+    jql: String = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
+
+    /// The interval between fetches.
+    refetch_interval: Duration = 15.min
+}
