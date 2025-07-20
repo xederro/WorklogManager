@@ -1,3 +1,4 @@
+/// Config is the main configuration for the WorklogManager application.
 @go.Package { name = "github.com/xederro/WorklogManager/internal/gen/config" }
 module Config
 
@@ -5,7 +6,8 @@ import "package://pkg.pkl-lang.org/pkl-go/pkl.golang@0.10.0#/go.pkl"
 import "JiraConfig.pkl"
 import "GoogleAIConfig.pkl"
 
-/// Config is the main configuration for the WorklogManager application.
+/// The path to database.
+db_path: String = "./db/db.sqlite"
 jira: JiraConfig
 use_ai: Boolean = false
 google_ai: GoogleAIConfig?((use_ai == true).implies(this != null))

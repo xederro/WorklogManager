@@ -4,3 +4,4 @@ WorklogManager
 WorklogManager.exe
 internal/gen/**/*
 .out/
+db/db.sqlite

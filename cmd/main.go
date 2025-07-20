@@ -23,15 +23,14 @@ func main() {
 	}
 
 	config.Init(*path)
+	model := tui.NewModel()
+	defer func() {
+		model.Quit()
+		config.Shutdown()
+	}()
 
-	if _, err := tea.NewProgram(tui.NewModel(), tea.WithAltScreen()).Run(); err != nil {
+	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(3)
-	}
-
-	err := config.Shutdown()
-	if err != nil {
-		fmt.Println("Error during shutdown:", err)
-		os.Exit(4)
 	}
 }

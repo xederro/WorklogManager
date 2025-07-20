@@ -22,7 +22,7 @@ As a developer who struggled with accurately logging the time spent on various t
 
 ## Building
 
-To build WorklogManager, you need to have Go >= 1.24 and pkl installed on your machine. You can then clone the repository and build the application:
+To build WorklogManager, you need to have Go >= 1.24, pkl and sqlc installed on your machine. You can then clone the repository and build the application:
 
 ```bash
 git clone https://github.com/xederro/WorklogManager.git
@@ -53,8 +53,9 @@ Run the built executable from the terminal:
 WorklogManager requires a configuration file to connect to your JIRA instance. You can create a configuration file in PKL format. Below is an example of how to structure your configuration file:
 
 ```pkl
-amends "package://github.com/xederro/WorklogManager/releases/download/1.3.0-SNAPSHOT/WorklogManager@1.3.0-SNAPSHOT#/Config.pkl"
+amends "package://github.com/xederro/WorklogManager/releases/download/1.2.2/WorklogManager@1.2.2#/Config.pkl"
 
+db_path = "db/db.sqlite"
 jira {
   url = "https://your-jira-instance.atlassian.net"
   default_worklog_comment = "Work"
@@ -64,7 +65,7 @@ jira {
     api_token = "your_api_token"
   }
   on_premise_config = null
-  request {
+  requests {
     new {
       jql = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
       refetch_interval = 10.min

@@ -4,24 +4,21 @@ import (
 	"fmt"
 	"github.com/andygrunwald/go-jira"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/stopwatch"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/xederro/WorklogManager/internal/config"
-	"time"
+	"github.com/xederro/WorklogManager/internal/tui/worklogTimer"
 )
 
 type WorklogItem struct {
 	Issue     *jira.Issue
-	Stopwatch *stopwatch.Model
+	Stopwatch worklogTimer.WorklogTimer
 	LogText   string
-	UseAi     int
 }
 
 func NewItem(issue jira.Issue) list.Item {
-	s := stopwatch.NewWithInterval(time.Second)
 	return &WorklogItem{
 		Issue:     &issue,
-		Stopwatch: &s,
+		Stopwatch: worklogTimer.New(),
 		LogText:   config.Conf.Jira.DefaultWorklogComment,
 	}
 }
@@ -32,15 +29,31 @@ func (i *WorklogItem) Title() string {
 	}
 	return fmt.Sprintf("%s", i.Issue.Key)
 }
-func (i *WorklogItem) Description() string            { return i.Stopwatch.View() }
-func (i *WorklogItem) FilterValue() string            { return i.Title() }
-func (i *WorklogItem) GetLogText() *string            { return &i.LogText }
-func (i *WorklogItem) GetStopwatch() *stopwatch.Model { return i.Stopwatch }
+func (i *WorklogItem) Description() string                     { return i.Stopwatch.View() }
+func (i *WorklogItem) FilterValue() string                     { return i.Title() }
+func (i *WorklogItem) GetLogText() *string                     { return &i.LogText }
+func (i *WorklogItem) GetStopwatch() worklogTimer.WorklogTimer { return i.Stopwatch }
 func (i *WorklogItem) UpdateStopwatch(msg tea.Msg) tea.Cmd {
 	m, cmd := i.Stopwatch.Update(msg)
-	i.Stopwatch = &m
+	i.Stopwatch = m
 	return cmd
 }
 func (i *WorklogItem) GetIssue() *jira.Issue {
 	return i.Issue
+}
+
+// WorklogResponse is the message type returned by the worklog actions.
+type WorklogResponse struct {
+	Err      error
+	Affected *WorklogItem
+}
+
+// ReturnCmd represents a worklog item.
+func ReturnCmd(err error, affected *WorklogItem) tea.Cmd {
+	return func() tea.Msg {
+		return WorklogResponse{
+			Err:      err,
+			Affected: affected,
+		}
+	}
 }

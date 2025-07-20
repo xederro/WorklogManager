@@ -55,6 +55,9 @@ func NewModel() Model {
 	issues.Styles.Title = titleStyle
 
 	// Make a worklogList of items
+	var cmd tea.Cmd
+	issues, cmd = issues.GetJiraFromDB()
+	config.Ch <- cmd
 	go config.TriggerUpdate()
 
 	return Model{
@@ -291,4 +294,8 @@ func (m Model) View() string {
 	default:
 		panic("unreachable")
 	}
+}
+
+func (m Model) Quit() {
+	m.list.Quit()
 }

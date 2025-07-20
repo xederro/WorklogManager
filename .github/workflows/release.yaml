@@ -31,6 +31,7 @@ jobs:
       run: |
         go get .
         go install github.com/apple/pkl-go/cmd/pkl-gen-go@v0.10.0
+        go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
     - name: Generate Go code
       run: go generate ./generate.go
